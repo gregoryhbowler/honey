@@ -30,6 +30,56 @@
         </div>
     </div>
 
+    <div class="harmony-controls">
+        <div class="harmony-title">global harmony</div>
+        <div class="harmony-params">
+            <div class="control-group">
+                <label>mode</label>
+                <select id="harmonyMode">
+                    <option value="scale" selected>scale/mode</option>
+                    <option value="custom">custom</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>root</label>
+                <select id="harmonyRoot">
+                    <option value="C" selected>C</option>
+                    <option value="C#">C#</option>
+                    <option value="D">D</option>
+                    <option value="D#">D#</option>
+                    <option value="E">E</option>
+                    <option value="F">F</option>
+                    <option value="F#">F#</option>
+                    <option value="G">G</option>
+                    <option value="G#">G#</option>
+                    <option value="A">A</option>
+                    <option value="A#">A#</option>
+                    <option value="B">B</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>scale/mode</label>
+                <select id="harmonyScale">
+                    <option value="major" selected>Major</option>
+                    <option value="naturalMinor">Natural Minor</option>
+                    <option value="harmonicMinor">Harmonic Minor</option>
+                    <option value="melodicMinor">Melodic Minor</option>
+                    <option value="dorian">Dorian</option>
+                    <option value="phrygian">Phrygian</option>
+                    <option value="lydian">Lydian</option>
+                    <option value="mixolydian">Mixolydian</option>
+                    <option value="locrian">Locrian</option>
+                    <option value="majorPentatonic">Major Pentatonic</option>
+                    <option value="minorPentatonic">Minor Pentatonic</option>
+                    <option value="blues">Blues</option>
+                    <option value="wholeTone">Whole Tone</option>
+                    <option value="diminished">Diminished</option>
+                    <option value="chromatic">Chromatic</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div class="voice-mutes">
         <button class="mute-btn active" data-voice="1">voice 1</button>
         <button class="mute-btn active" data-voice="2">voice 2</button>

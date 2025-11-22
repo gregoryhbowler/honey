@@ -41,6 +41,34 @@ h1 {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
+/* Harmony Controls Styling */
+.harmony-controls {
+    margin-bottom: 20px;
+    padding: 25px;
+    background: rgba(255, 230, 200, 0.6);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.harmony-title {
+    text-align: center;
+    font-size: 0.85em;
+    margin-bottom: 18px;
+    color: #666;
+    text-transform: lowercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.harmony-params {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
 .voice-mutes {
     display: flex;
     justify-content: center;
@@ -302,6 +330,7 @@ select {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Probability Faders */
 .probability-faders {
     display: flex;
     gap: 10px;
@@ -317,11 +346,30 @@ select {
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    transition: opacity 0.3s;
+}
+
+/* Disabled state for out-of-scale notes */
+.fader-container.disabled {
+    opacity: 0.3;
+}
+
+.fader-container.disabled .fader-label {
+    color: #ccc;
+}
+
+.fader-container.disabled .vertical-slider {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.fader-container.disabled .vertical-slider::-webkit-slider-thumb {
+    background: #999;
+    cursor: not-allowed;
 }
 
 .fader-label {
     font-size: 0.75em;
-    color: #999;
+    color: #666;
     font-weight: 500;
 }
 
@@ -334,6 +382,7 @@ select {
     background: rgba(0, 0, 0, 0.1);
     outline: none;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .vertical-slider::-webkit-slider-thumb {
@@ -343,6 +392,15 @@ select {
     border-radius: 50%;
     background: #2a2a2a;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vertical-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.1);
+}
+
+.vertical-slider:disabled {
+    cursor: not-allowed;
 }
 
 .honey {
@@ -363,7 +421,12 @@ select {
         padding: 20px;
     }
     
-    .master-controls, .voice-mutes, .voice-tabs {
+    .master-controls, .harmony-controls, .voice-mutes, .voice-tabs {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .harmony-params {
         flex-direction: column;
         gap: 15px;
     }

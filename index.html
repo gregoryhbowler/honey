@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>honey and vinegar</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>honey and vinegar</h1>
+    </div>
+
+    <div class="master-controls">
+        <div class="control-group">
+            <label>tempo</label>
+            <input type="range" id="masterBPM" value="120" min="40" max="300">
+            <span class="param-value" id="bpmValue">120</span>
+        </div>
+        <div class="control-group">
+            <label>master transpose</label>
+            <input type="range" id="masterTranspose" value="0" min="-12" max="12" step="1">
+            <span class="param-value" id="masterTransposeValue">0</span>
+        </div>
+        <div class="control-group">
+            <button id="playPause" class="active">play</button>
+        </div>
+        <div class="control-group">
+            <button id="randomAll">random all</button>
+        </div>
+    </div>
+
+    <div class="voice-mutes">
+        <button class="mute-btn active" data-voice="1">voice 1</button>
+        <button class="mute-btn active" data-voice="2">voice 2</button>
+        <button class="mute-btn active" data-voice="3">voice 3</button>
+    </div>
+
+    <div class="voice-tabs">
+        <button class="tab-btn active" data-voice="1">voice 1</button>
+        <button class="tab-btn" data-voice="2">voice 2</button>
+        <button class="tab-btn" data-voice="3">voice 3</button>
+    </div>
+
+    <div class="voice-container" id="voiceContainer"></div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

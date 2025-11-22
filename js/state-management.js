@@ -1,10 +1,11 @@
 // State Management Module
-// Manages voices, master clock, and global state
+// Manages voices, master clock, global state, and harmony
 
 import { getAudioContext } from './utils.js';
 import { HoneySynth } from './honey-engine.js';
 import { VinegarSynth } from './vinegar-engine.js';
 import { Sequencer } from './sequencer.js';
+import { getAllowedNotes } from './harmony.js';
 
 /**
  * Voice class - represents one of the three voices
@@ -62,7 +63,7 @@ export class Voice {
      */
     randomize() {
         this.synth.randomPatch();
-        this.sequencer.randomize();
+        this.sequencer.randomize(state.harmony);
     }
 }
 
@@ -79,8 +80,51 @@ export const state = {
     masterBPM: 120,
     masterTranspose: 0,
     clockInterval: null,
-    clockCounter: 0
+    clockCounter: 0,
+    // Harmony system - controls which notes are "in key" for all voices
+    harmony: {
+        mode: 'scale',      // 'scale' | 'custom'
+        root: 'C',          // Root note: C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+        scaleType: 'major'  // Scale type: major, naturalMinor, dorian, etc.
+    }
 };
+
+/**
+ * Set harmony root note
+ * @param {string} root - Root note (C, C#, D, etc.)
+ */
+export function setHarmonyRoot(root) {
+    state.harmony.root = root;
+    notifyHarmonyChange();
+}
+
+/**
+ * Set harmony scale type
+ * @param {string} scaleType - Scale type key
+ */
+export function setHarmonyScaleType(scaleType) {
+    state.harmony.scaleType = scaleType;
+    notifyHarmonyChange();
+}
+
+/**
+ * Set harmony mode
+ * @param {string} mode - 'scale' or 'custom'
+ */
+export function setHarmonyMode(mode) {
+    state.harmony.mode = mode;
+    notifyHarmonyChange();
+}
+
+/**
+ * Notify all sequencers that harmony has changed
+ * Regenerate sequences to respect new harmony
+ */
+function notifyHarmonyChange() {
+    state.voices.forEach(voice => {
+        voice.sequencer.generateSequence(state.harmony);
+    });
+}
 
 /**
  * Start the master clock

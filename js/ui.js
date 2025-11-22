@@ -1,7 +1,18 @@
 // UI Module
 // Handles all UI creation, updates, and event handling
+// Now with global harmony controls and harmony-aware probability sliders
 
-import { state, setMasterBPM, setMasterTranspose, togglePlayPause, randomizeAll } from './state-management.js';
+import { 
+    state, 
+    setMasterBPM, 
+    setMasterTranspose, 
+    togglePlayPause, 
+    randomizeAll,
+    setHarmonyRoot,
+    setHarmonyScaleType,
+    setHarmonyMode
+} from './state-management.js';
+import { NOTE_NAMES, getAllowedNotes, getScaleName, SCALE_TYPES } from './harmony.js';
 
 let currentVoiceTab = 1;
 
@@ -95,8 +106,8 @@ export function createVoiceUI(voice) {
         <div class="section">
             <div class="section-title">note probabilities</div>
             <div class="probability-faders">
-                ${['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(note => `
-                    <div class="fader-container">
+                ${NOTE_NAMES.map(note => `
+                    <div class="fader-container" data-note="${note}">
                         <div class="fader-label">${note}</div>
                         <input type="range" 
                                class="vertical-slider note-prob" 
@@ -269,6 +280,41 @@ export function createVinegarParams() {
 }
 
 /**
+ * Update probability sliders based on current harmony
+ * Dims out-of-scale notes in scale mode, enables all in custom mode
+ */
+export function updateProbabilitySliders() {
+    const voice = state.voices[currentVoiceTab - 1];
+    const panel = document.getElementById(`voice-${voice.id}`);
+    if (!panel) return;
+    
+    const allowedNotes = state.harmony.mode === 'scale' 
+        ? getAllowedNotes(state.harmony.root, state.harmony.scaleType)
+        : NOTE_NAMES.reduce((acc, note) => { acc[note] = true; return acc; }, {});
+    
+    // Update each fader container
+    NOTE_NAMES.forEach(note => {
+        const container = panel.querySelector(`.fader-container[data-note="${note}"]`);
+        const slider = panel.querySelector(`.note-prob[data-note="${note}"]`);
+        
+        if (!container || !slider) return;
+        
+        if (state.harmony.mode === 'scale' && !allowedNotes[note]) {
+            // Out of scale - dim and disable
+            container.classList.add('disabled');
+            slider.disabled = true;
+            slider.value = 0;
+        } else {
+            // In scale or custom mode - enable
+            container.classList.remove('disabled');
+            slider.disabled = false;
+            // Restore value from sequencer
+            slider.value = voice.sequencer.noteProbabilities[note];
+        }
+    });
+}
+
+/**
  * Attach event listeners to voice UI elements
  * @param {Voice} voice - Voice object
  * @param {HTMLElement} panel - Panel element
@@ -301,14 +347,14 @@ export function attachVoiceListeners(voice, panel) {
     stepsSlider.addEventListener('input', (e) => {
         const val = parseInt(e.target.value);
         stepsValue.textContent = val;
-        voice.sequencer.setParam('steps', val);
+        voice.sequencer.setParam('steps', val, state.harmony);
         updateStepIndicators();
     });
     
     // Sequencer division
     const divisionSelect = panel.querySelector('.seq-division');
     divisionSelect.addEventListener('change', (e) => {
-        voice.sequencer.setParam('division', parseInt(e.target.value));
+        voice.sequencer.setParam('division', parseInt(e.target.value), state.harmony);
     });
     
     // Rest probability
@@ -317,7 +363,7 @@ export function attachVoiceListeners(voice, panel) {
     restSlider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         restValue.textContent = Math.round(val * 100) + '%';
-        voice.sequencer.setParam('rest', val);
+        voice.sequencer.setParam('rest', val, state.harmony);
     });
     
     // Legato probability
@@ -326,7 +372,7 @@ export function attachVoiceListeners(voice, panel) {
     legatoSlider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         legatoValue.textContent = Math.round(val * 100) + '%';
-        voice.sequencer.setParam('legato', val);
+        voice.sequencer.setParam('legato', val, state.harmony);
     });
     
     // Octave range
@@ -335,7 +381,7 @@ export function attachVoiceListeners(voice, panel) {
     octaveLow.addEventListener('input', (e) => {
         const val = parseInt(e.target.value);
         octaveLowValue.textContent = val;
-        voice.sequencer.setParam('octaveLow', val);
+        voice.sequencer.setParam('octaveLow', val, state.harmony);
     });
     
     const octaveHigh = panel.querySelector('.octave-high');
@@ -343,7 +389,7 @@ export function attachVoiceListeners(voice, panel) {
     octaveHigh.addEventListener('input', (e) => {
         const val = parseInt(e.target.value);
         octaveHighValue.textContent = val;
-        voice.sequencer.setParam('octaveHigh', val);
+        voice.sequencer.setParam('octaveHigh', val, state.harmony);
     });
     
     // Note probabilities
@@ -351,13 +397,13 @@ export function attachVoiceListeners(voice, panel) {
         slider.addEventListener('input', (e) => {
             const note = e.target.dataset.note;
             const prob = parseFloat(e.target.value);
-            voice.sequencer.setNoteProbability(note, prob);
+            voice.sequencer.setNoteProbability(note, prob, state.harmony);
         });
     });
     
     // Random sequence button
     panel.querySelector('.seq-dice').addEventListener('click', () => {
-        voice.sequencer.randomize();
+        voice.sequencer.randomize(state.harmony);
         updateVoiceUI(voice);
     });
     
@@ -593,6 +639,9 @@ export function updateVoiceUI(voice) {
     }
     
     attachSynthParamListeners(voice, panel);
+    
+    // Update probability sliders for current harmony
+    updateProbabilitySliders();
 }
 
 /**
@@ -698,6 +747,25 @@ export function initUI() {
     document.getElementById('randomAll').addEventListener('click', () => {
         randomizeAll();
         showVoice(currentVoiceTab); // Refresh current view
+    });
+    
+    // Harmony controls
+    const harmonyRoot = document.getElementById('harmonyRoot');
+    harmonyRoot.addEventListener('change', (e) => {
+        setHarmonyRoot(e.target.value);
+        updateProbabilitySliders();
+    });
+    
+    const harmonyScale = document.getElementById('harmonyScale');
+    harmonyScale.addEventListener('change', (e) => {
+        setHarmonyScaleType(e.target.value);
+        updateProbabilitySliders();
+    });
+    
+    const harmonyMode = document.getElementById('harmonyMode');
+    harmonyMode.addEventListener('change', (e) => {
+        setHarmonyMode(e.target.value);
+        updateProbabilitySliders();
     });
     
     // Setup animation loop for step indicators

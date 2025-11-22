@@ -1,6 +1,6 @@
 // UI Module
 // Handles all UI creation, updates, and event handling
-// Now with global harmony controls and harmony-aware probability sliders
+// Extended with comprehensive Honey synth (Atlantix-inspired) controls
 
 import { 
     state, 
@@ -135,16 +135,124 @@ export function createVoiceUI(voice) {
 }
 
 /**
- * Create Honey synth parameter UI
+ * Create Honey synth parameter UI with Atlantix-inspired controls
  * @returns {string} HTML string
  */
 export function createHoneyParams() {
     return `
         <div class="param-row">
+            <span class="param-label">VCO A Saw Level</span>
+            <div class="param-control">
+                <input type="range" class="vco-a-saw-level" min="0" max="1" step="0.01" value="0.5">
+                <span class="param-value vco-a-saw-level-value">0.50</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO A Pulse Level</span>
+            <div class="param-control">
+                <input type="range" class="vco-a-pulse-level" min="0" max="1" step="0.01" value="0">
+                <span class="param-value vco-a-pulse-level-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO A Octave</span>
+            <div class="param-control">
+                <input type="range" class="vco-a-octave" min="-2" max="2" step="1" value="0">
+                <span class="param-value vco-a-octave-value">0</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO A Fine</span>
+            <div class="param-control">
+                <input type="range" class="vco-a-fine" min="-100" max="100" step="1" value="0">
+                <span class="param-value vco-a-fine-value">0</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">PWM Amount</span>
+            <div class="param-control">
+                <input type="range" class="pwm-amount" min="0" max="1" step="0.01" value="0">
+                <span class="param-value pwm-amount-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">PWM Source</span>
+            <div class="param-control">
+                <select class="pwm-source">
+                    <option value="lfo" selected>LFO</option>
+                    <option value="env">Envelope</option>
+                </select>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO B Mode</span>
+            <div class="param-control">
+                <select class="vco-b-mode">
+                    <option value="lfo" selected>LFO</option>
+                    <option value="audio">Audio</option>
+                </select>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO B Shape</span>
+            <div class="param-control">
+                <select class="vco-b-shape">
+                    <option value="sine" selected>Sine</option>
+                    <option value="triangle">Triangle</option>
+                    <option value="sawtooth">Sawtooth</option>
+                    <option value="square">Square</option>
+                </select>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO B Level</span>
+            <div class="param-control">
+                <input type="range" class="vco-b-level" min="0" max="1" step="0.01" value="0.3">
+                <span class="param-value vco-b-level-value">0.30</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">VCO B Octave</span>
+            <div class="param-control">
+                <input type="range" class="vco-b-octave" min="-2" max="2" step="1" value="-1">
+                <span class="param-value vco-b-octave-value">-1</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO Rate</span>
+            <div class="param-control">
+                <input type="range" class="lfo-rate" min="0.1" max="20" step="0.1" value="2">
+                <span class="param-value lfo-rate-value">2.0 Hz</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">Sub Osc Level</span>
+            <div class="param-control">
+                <input type="range" class="sub-level" min="0" max="1" step="0.01" value="0">
+                <span class="param-value sub-level-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">Sub Type</span>
+            <div class="param-control">
+                <select class="sub-type">
+                    <option value="-1" selected>-1 Octave</option>
+                    <option value="-2">-2 Octaves</option>
+                </select>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">Noise Level</span>
+            <div class="param-control">
+                <input type="range" class="noise-level" min="0" max="1" step="0.01" value="0">
+                <span class="param-value noise-level-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
             <span class="param-label">Filter Freq</span>
             <div class="param-control">
                 <input type="range" class="filter-freq" min="100" max="5000" value="1000">
-                <span class="param-value filter-freq-value">1000</span>
+                <span class="param-value filter-freq-value">1000 Hz</span>
             </div>
         </div>
         <div class="param-row">
@@ -155,10 +263,45 @@ export function createHoneyParams() {
             </div>
         </div>
         <div class="param-row">
+            <span class="param-label">Env → Filter</span>
+            <div class="param-control">
+                <input type="range" class="env-to-filter" min="-1" max="1" step="0.01" value="0">
+                <span class="param-value env-to-filter-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Filter</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-filter" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-filter-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Pitch</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-pitch" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-pitch-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → PWM</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-pwm" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-pwm-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Amp</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-amp" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-amp-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
             <span class="param-label">Attack</span>
             <div class="param-control">
                 <input type="range" class="env-attack" min="0.001" max="2" step="0.001" value="0.01">
-                <span class="param-value env-attack-value">0.01</span>
+                <span class="param-value env-attack-value">0.010</span>
             </div>
         </div>
         <div class="param-row">
@@ -183,39 +326,30 @@ export function createHoneyParams() {
             </div>
         </div>
         <div class="param-row">
-            <span class="param-label">VCO A Shape</span>
+            <span class="param-label">Env Rate</span>
             <div class="param-control">
-                <select class="vco-a-shape">
-                    <option value="sine">Sine</option>
-                    <option value="triangle">Triangle</option>
-                    <option value="sawtooth" selected>Sawtooth</option>
-                    <option value="square">Square</option>
+                <select class="env-rate">
+                    <option value="fast">Fast</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="slow">Slow</option>
                 </select>
             </div>
         </div>
         <div class="param-row">
-            <span class="param-label">VCO B Shape</span>
+            <span class="param-label">Drive Mode</span>
             <div class="param-control">
-                <select class="vco-b-shape">
-                    <option value="sine">Sine</option>
-                    <option value="triangle">Triangle</option>
-                    <option value="sawtooth">Sawtooth</option>
-                    <option value="square" selected>Square</option>
+                <select class="drive-mode">
+                    <option value="off" selected>Off</option>
+                    <option value="sym">Symmetric</option>
+                    <option value="asym">Asymmetric</option>
                 </select>
             </div>
         </div>
         <div class="param-row">
-            <span class="param-label">VCO A Level</span>
+            <span class="param-label">Drive Amount</span>
             <div class="param-control">
-                <input type="range" class="vco-a-level" min="0" max="1" step="0.01" value="0.5">
-                <span class="param-value vco-a-level-value">0.50</span>
-            </div>
-        </div>
-        <div class="param-row">
-            <span class="param-label">VCO B Level</span>
-            <div class="param-control">
-                <input type="range" class="vco-b-level" min="0" max="1" step="0.01" value="0.3">
-                <span class="param-value vco-b-level-value">0.30</span>
+                <input type="range" class="drive-amount" min="0" max="1" step="0.01" value="0.5">
+                <span class="param-value drive-amount-value">0.50</span>
             </div>
         </div>
     `;
@@ -281,7 +415,6 @@ export function createVinegarParams() {
 
 /**
  * Update probability sliders based on current harmony
- * Dims out-of-scale notes in scale mode, enables all in custom mode
  */
 export function updateProbabilitySliders() {
     const voice = state.voices[currentVoiceTab - 1];
@@ -292,7 +425,6 @@ export function updateProbabilitySliders() {
         ? getAllowedNotes(state.harmony.root, state.harmony.scaleType)
         : NOTE_NAMES.reduce((acc, note) => { acc[note] = true; return acc; }, {});
     
-    // Update each fader container
     NOTE_NAMES.forEach(note => {
         const container = panel.querySelector(`.fader-container[data-note="${note}"]`);
         const slider = panel.querySelector(`.note-prob[data-note="${note}"]`);
@@ -300,15 +432,12 @@ export function updateProbabilitySliders() {
         if (!container || !slider) return;
         
         if (state.harmony.mode === 'scale' && !allowedNotes[note]) {
-            // Out of scale - dim and disable
             container.classList.add('disabled');
             slider.disabled = true;
             slider.value = 0;
         } else {
-            // In scale or custom mode - enable
             container.classList.remove('disabled');
             slider.disabled = false;
-            // Restore value from sequencer
             slider.value = voice.sequencer.noteProbabilities[note];
         }
     });
@@ -433,21 +562,163 @@ function attachSynthParamListeners(voice, panel) {
 }
 
 /**
- * Attach Honey synth parameter listeners
+ * Attach Honey synth parameter listeners with all new Atlantix-inspired controls
  */
 function attachHoneyListeners(voice, synthSection) {
-    // Filter frequency
+    // VCO A Saw Level
+    const vcoASawLevel = synthSection.querySelector('.vco-a-saw-level');
+    const vcoASawLevelValue = synthSection.querySelector('.vco-a-saw-level-value');
+    if (vcoASawLevel) {
+        vcoASawLevel.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            vcoASawLevelValue.textContent = val.toFixed(2);
+            voice.synth.setParam('vcoASawLevel', val);
+        });
+    }
+    
+    // VCO A Pulse Level
+    const vcoAPulseLevel = synthSection.querySelector('.vco-a-pulse-level');
+    const vcoAPulseLevelValue = synthSection.querySelector('.vco-a-pulse-level-value');
+    if (vcoAPulseLevel) {
+        vcoAPulseLevel.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            vcoAPulseLevelValue.textContent = val.toFixed(2);
+            voice.synth.setParam('vcoAPulseLevel', val);
+        });
+    }
+    
+    // VCO A Octave
+    const vcoAOctave = synthSection.querySelector('.vco-a-octave');
+    const vcoAOctaveValue = synthSection.querySelector('.vco-a-octave-value');
+    if (vcoAOctave) {
+        vcoAOctave.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            vcoAOctaveValue.textContent = val > 0 ? '+' + val : val;
+            voice.synth.setParam('vcoAOctave', val);
+        });
+    }
+    
+    // VCO A Fine
+    const vcoAFine = synthSection.querySelector('.vco-a-fine');
+    const vcoAFineValue = synthSection.querySelector('.vco-a-fine-value');
+    if (vcoAFine) {
+        vcoAFine.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            vcoAFineValue.textContent = val > 0 ? '+' + val : val;
+            voice.synth.setParam('vcoAFine', val);
+        });
+    }
+    
+    // PWM Amount
+    const pwmAmount = synthSection.querySelector('.pwm-amount');
+    const pwmAmountValue = synthSection.querySelector('.pwm-amount-value');
+    if (pwmAmount) {
+        pwmAmount.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            pwmAmountValue.textContent = val.toFixed(2);
+            voice.synth.setParam('pwmAmount', val);
+        });
+    }
+    
+    // PWM Source
+    const pwmSource = synthSection.querySelector('.pwm-source');
+    if (pwmSource) {
+        pwmSource.addEventListener('change', (e) => {
+            voice.synth.setParam('pwmSource', e.target.value);
+        });
+    }
+    
+    // VCO B Mode
+    const vcoBMode = synthSection.querySelector('.vco-b-mode');
+    if (vcoBMode) {
+        vcoBMode.addEventListener('change', (e) => {
+            voice.synth.setParam('vcoBMode', e.target.value);
+        });
+    }
+    
+    // VCO B Shape
+    const vcoBShape = synthSection.querySelector('.vco-b-shape');
+    if (vcoBShape) {
+        vcoBShape.addEventListener('change', (e) => {
+            voice.synth.setParam('vcoBShape', e.target.value);
+        });
+    }
+    
+    // VCO B Level
+    const vcoBLevel = synthSection.querySelector('.vco-b-level');
+    const vcoBLevelValue = synthSection.querySelector('.vco-b-level-value');
+    if (vcoBLevel) {
+        vcoBLevel.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            vcoBLevelValue.textContent = val.toFixed(2);
+            voice.synth.setParam('vcoBLevel', val);
+        });
+    }
+    
+    // VCO B Octave
+    const vcoBOctave = synthSection.querySelector('.vco-b-octave');
+    const vcoBOctaveValue = synthSection.querySelector('.vco-b-octave-value');
+    if (vcoBOctave) {
+        vcoBOctave.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            vcoBOctaveValue.textContent = val > 0 ? '+' + val : val;
+            voice.synth.setParam('vcoBOctave', val);
+        });
+    }
+    
+    // LFO Rate
+    const lfoRate = synthSection.querySelector('.lfo-rate');
+    const lfoRateValue = synthSection.querySelector('.lfo-rate-value');
+    if (lfoRate) {
+        lfoRate.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoRateValue.textContent = val.toFixed(1) + ' Hz';
+            voice.synth.setParam('lfoRate', val);
+        });
+    }
+    
+    // Sub Level
+    const subLevel = synthSection.querySelector('.sub-level');
+    const subLevelValue = synthSection.querySelector('.sub-level-value');
+    if (subLevel) {
+        subLevel.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            subLevelValue.textContent = val.toFixed(2);
+            voice.synth.setParam('subLevel', val);
+        });
+    }
+    
+    // Sub Type
+    const subType = synthSection.querySelector('.sub-type');
+    if (subType) {
+        subType.addEventListener('change', (e) => {
+            voice.synth.setParam('subType', e.target.value);
+        });
+    }
+    
+    // Noise Level
+    const noiseLevel = synthSection.querySelector('.noise-level');
+    const noiseLevelValue = synthSection.querySelector('.noise-level-value');
+    if (noiseLevel) {
+        noiseLevel.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            noiseLevelValue.textContent = val.toFixed(2);
+            voice.synth.setParam('noiseLevel', val);
+        });
+    }
+    
+    // Filter Freq
     const filterFreq = synthSection.querySelector('.filter-freq');
     const filterFreqValue = synthSection.querySelector('.filter-freq-value');
     if (filterFreq) {
         filterFreq.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
-            filterFreqValue.textContent = val;
+            filterFreqValue.textContent = val + ' Hz';
             voice.synth.setParam('filterFreq', val);
         });
     }
     
-    // Filter resonance
+    // Filter Resonance
     const filterRes = synthSection.querySelector('.filter-res');
     const filterResValue = synthSection.querySelector('.filter-res-value');
     if (filterRes) {
@@ -455,6 +726,61 @@ function attachHoneyListeners(voice, synthSection) {
             const val = parseFloat(e.target.value);
             filterResValue.textContent = val.toFixed(1);
             voice.synth.setParam('filterRes', val);
+        });
+    }
+    
+    // Env To Filter
+    const envToFilter = synthSection.querySelector('.env-to-filter');
+    const envToFilterValue = synthSection.querySelector('.env-to-filter-value');
+    if (envToFilter) {
+        envToFilter.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            envToFilterValue.textContent = val > 0 ? '+' + val.toFixed(2) : val.toFixed(2);
+            voice.synth.setParam('envToFilter', val);
+        });
+    }
+    
+    // LFO To Filter
+    const lfoToFilter = synthSection.querySelector('.lfo-to-filter');
+    const lfoToFilterValue = synthSection.querySelector('.lfo-to-filter-value');
+    if (lfoToFilter) {
+        lfoToFilter.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToFilterValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfoToFilter', val);
+        });
+    }
+    
+    // LFO To Pitch
+    const lfoToPitch = synthSection.querySelector('.lfo-to-pitch');
+    const lfoToPitchValue = synthSection.querySelector('.lfo-to-pitch-value');
+    if (lfoToPitch) {
+        lfoToPitch.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToPitchValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfoToPitch', val);
+        });
+    }
+    
+    // LFO To PWM
+    const lfoToPWM = synthSection.querySelector('.lfo-to-pwm');
+    const lfoToPWMValue = synthSection.querySelector('.lfo-to-pwm-value');
+    if (lfoToPWM) {
+        lfoToPWM.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToPWMValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfoToPWM', val);
+        });
+    }
+    
+    // LFO To Amp
+    const lfoToAmp = synthSection.querySelector('.lfo-to-amp');
+    const lfoToAmpValue = synthSection.querySelector('.lfo-to-amp-value');
+    if (lfoToAmp) {
+        lfoToAmp.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToAmpValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfoToAmp', val);
         });
     }
     
@@ -502,41 +828,30 @@ function attachHoneyListeners(voice, synthSection) {
         });
     }
     
-    // VCO A Shape
-    const vcoAShape = synthSection.querySelector('.vco-a-shape');
-    if (vcoAShape) {
-        vcoAShape.addEventListener('change', (e) => {
-            voice.synth.setParam('vcoAShape', e.target.value);
+    // Env Rate
+    const envRate = synthSection.querySelector('.env-rate');
+    if (envRate) {
+        envRate.addEventListener('change', (e) => {
+            voice.synth.setParam('envRate', e.target.value);
         });
     }
     
-    // VCO B Shape
-    const vcoBShape = synthSection.querySelector('.vco-b-shape');
-    if (vcoBShape) {
-        vcoBShape.addEventListener('change', (e) => {
-            voice.synth.setParam('vcoBShape', e.target.value);
+    // Drive Mode
+    const driveMode = synthSection.querySelector('.drive-mode');
+    if (driveMode) {
+        driveMode.addEventListener('change', (e) => {
+            voice.synth.setParam('driveMode', e.target.value);
         });
     }
     
-    // VCO A Level
-    const vcoALevel = synthSection.querySelector('.vco-a-level');
-    const vcoALevelValue = synthSection.querySelector('.vco-a-level-value');
-    if (vcoALevel) {
-        vcoALevel.addEventListener('input', (e) => {
+    // Drive Amount
+    const driveAmount = synthSection.querySelector('.drive-amount');
+    const driveAmountValue = synthSection.querySelector('.drive-amount-value');
+    if (driveAmount) {
+        driveAmount.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            vcoALevelValue.textContent = val.toFixed(2);
-            voice.synth.setParam('vcoALevel', val);
-        });
-    }
-    
-    // VCO B Level
-    const vcoBLevel = synthSection.querySelector('.vco-b-level');
-    const vcoBLevelValue = synthSection.querySelector('.vco-b-level-value');
-    if (vcoBLevel) {
-        vcoBLevel.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            vcoBLevelValue.textContent = val.toFixed(2);
-            voice.synth.setParam('vcoBLevel', val);
+            driveAmountValue.textContent = val.toFixed(2);
+            voice.synth.setParam('driveAmount', val);
         });
     }
 }
@@ -639,8 +954,6 @@ export function updateVoiceUI(voice) {
     }
     
     attachSynthParamListeners(voice, panel);
-    
-    // Update probability sliders for current harmony
     updateProbabilitySliders();
 }
 
@@ -652,7 +965,6 @@ export function updateStepIndicators() {
         const container = document.getElementById(`steps-${voice.id}`);
         if (!container) return;
         
-        // Create steps if needed
         if (container.children.length !== voice.sequencer.steps) {
             container.innerHTML = '';
             for (let i = 0; i < voice.sequencer.steps; i++) {
@@ -663,7 +975,6 @@ export function updateStepIndicators() {
             }
         }
         
-        // Update active step
         Array.from(container.children).forEach((step, i) => {
             step.classList.toggle('active', i === voice.sequencer.currentStep);
         });
@@ -686,7 +997,6 @@ export function showVoice(voiceNum) {
     attachVoiceListeners(voice, panel);
     updateStepIndicators();
     
-    // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.voice) === voiceNum);
     });
@@ -696,10 +1006,8 @@ export function showVoice(voiceNum) {
  * Initialize all UI event listeners
  */
 export function initUI() {
-    // Show first voice
     showVoice(1);
     
-    // Tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const voiceNum = parseInt(btn.dataset.voice);
@@ -707,7 +1015,6 @@ export function initUI() {
         });
     });
     
-    // Mute buttons
     document.querySelectorAll('.mute-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const voiceNum = parseInt(btn.dataset.voice);
@@ -717,7 +1024,6 @@ export function initUI() {
         });
     });
     
-    // Master BPM
     const bpmSlider = document.getElementById('masterBPM');
     const bpmValue = document.getElementById('bpmValue');
     bpmSlider.addEventListener('input', (e) => {
@@ -726,7 +1032,6 @@ export function initUI() {
         setMasterBPM(bpm);
     });
     
-    // Master transpose
     const transposeSlider = document.getElementById('masterTranspose');
     const transposeValue = document.getElementById('masterTransposeValue');
     transposeSlider.addEventListener('input', (e) => {
@@ -735,7 +1040,6 @@ export function initUI() {
         setMasterTranspose(transpose);
     });
     
-    // Play/pause button
     const playPauseBtn = document.getElementById('playPause');
     playPauseBtn.addEventListener('click', () => {
         const isPlaying = togglePlayPause();
@@ -743,13 +1047,11 @@ export function initUI() {
         playPauseBtn.classList.toggle('active', isPlaying);
     });
     
-    // Random all button
     document.getElementById('randomAll').addEventListener('click', () => {
         randomizeAll();
-        showVoice(currentVoiceTab); // Refresh current view
+        showVoice(currentVoiceTab);
     });
     
-    // Harmony controls
     const harmonyRoot = document.getElementById('harmonyRoot');
     harmonyRoot.addEventListener('change', (e) => {
         setHarmonyRoot(e.target.value);
@@ -768,7 +1070,6 @@ export function initUI() {
         updateProbabilitySliders();
     });
     
-    // Setup animation loop for step indicators
     function animate() {
         updateStepIndicators();
         requestAnimationFrame(animate);

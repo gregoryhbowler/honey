@@ -340,7 +340,8 @@ export class QuadraVerbReverb {
             // Each line feeds into the next line (circular)
             const nextLine = (i + 1) % numLines;
             const crossGain = this.ctx.createGain();
-            crossGain.gain.value = 0.22; // Slightly reduced for stability
+            // Keep crossfeed gentle so the feedback matrix stays stable when used on a send
+            crossGain.gain.value = 0.12;
             
             lines[i].output.connect(crossGain);
             crossGain.connect(lines[nextLine].input);
@@ -529,8 +530,13 @@ export class QuadraVerbReverb {
         // RT60 formula: feedback = 10^(-3 * delay / RT60)
         const avgDelay = 0.05; // Average delay line time in seconds
         const feedback = Math.pow(10, (-3 * avgDelay) / decayTime);
-        // Keep a bit more headroom to avoid runaway gain when the send is hot
-        return Math.max(0, Math.min(0.9, feedback));
+
+        // Keep headroom so the crossfeed matrix never exceeds unity gain even when the send is hot
+        // The 0.65 cap + safety multiplier keeps (self feedback + crossfeed) well under 1.0
+        const SAFE_MAX = 0.65;
+        const SAFETY_MARGIN = 0.9; // Additional cushion for extreme settings
+
+        return Math.max(0, Math.min(SAFE_MAX, feedback * SAFETY_MARGIN));
     }
     
     /**

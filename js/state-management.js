@@ -1,5 +1,5 @@
 // State Management Module
-// Manages voices, master clock, global state, and harmony
+// Manages voices, master clock, global state, harmony, and mixer
 
 import { getAudioContext } from './utils.js';
 import { HoneySynth } from './honey-engine.js';
@@ -7,17 +7,23 @@ import { VinegarSynth } from './vinegar-engine.js';
 import { MollySynth } from './molly-engine.js';
 import { Sequencer } from './sequencer.js';
 import { getAllowedNotes } from './harmony.js';
+import { Mixer } from './mixer.js';
+
+// Create mixer instance
+const mixer = new Mixer(getAudioContext(), 3);
 
 /**
  * Voice class - represents one of the three voices
  */
 export class Voice {
-    constructor(id) {
+    constructor(id, mixerChannel) {
         this.id = id;
         this.type = 'honey';
+        this.mixerChannel = mixerChannel;
         this.synth = new HoneySynth(getAudioContext());
         this.sequencer = new Sequencer(this.synth, id);
-        this.synth.output.connect(getAudioContext().destination);
+        // Route synth through mixer channel strip instead of directly to destination
+        this.synth.output.connect(this.mixerChannel.input);
         this.transpose = 0;
         this.muted = false;
     }
@@ -38,7 +44,7 @@ export class Voice {
             this.synth = new MollySynth(getAudioContext());
         }
         
-        this.synth.output.connect(getAudioContext().destination);
+        this.synth.output.connect(this.mixerChannel.input);
         this.sequencer.synth = this.synth;
     }
     
@@ -75,10 +81,11 @@ export class Voice {
  */
 export const state = {
     voices: [
-        new Voice(1),
-        new Voice(2),
-        new Voice(3)
+        new Voice(1, mixer.getChannel(0)),
+        new Voice(2, mixer.getChannel(1)),
+        new Voice(3, mixer.getChannel(2))
     ],
+    mixer: mixer,
     isPlaying: false,
     masterBPM: 120,
     masterTranspose: 0,

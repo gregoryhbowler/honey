@@ -77,6 +77,14 @@ export class QuadraVerbReverb {
         this.highShelf.type = 'highshelf';
         this.highShelf.frequency.value = 8000;
         this.highShelf.gain.value = -3;
+
+        // Gentle output limiter to prevent runaway feedback when used on a send
+        this.outputLimiter = ctx.createDynamicsCompressor();
+        this.outputLimiter.threshold.value = -12; // Catch hot feedback buildups
+        this.outputLimiter.knee.value = 12;
+        this.outputLimiter.ratio.value = 12;
+        this.outputLimiter.attack.value = 0.003;
+        this.outputLimiter.release.value = 0.25;
         
         // === Stereo Width ===
         this.stereoWidthMerger = ctx.createChannelMerger(2);
@@ -332,7 +340,7 @@ export class QuadraVerbReverb {
             // Each line feeds into the next line (circular)
             const nextLine = (i + 1) % numLines;
             const crossGain = this.ctx.createGain();
-            crossGain.gain.value = 0.3; // Crossfeed amount
+            crossGain.gain.value = 0.22; // Slightly reduced for stability
             
             lines[i].output.connect(crossGain);
             crossGain.connect(lines[nextLine].input);
@@ -417,6 +425,8 @@ export class QuadraVerbReverb {
             this.diffusionAllpasses.output.disconnect();
             this.fdnLines.mixer.disconnect();
             this.highShelf.disconnect();
+            this.outputLimiter.disconnect();
+            this.wetGain.disconnect();
         } catch(e) {
             // Some nodes may not be connected, that's ok
         }
@@ -433,10 +443,11 @@ export class QuadraVerbReverb {
         this.preDelayNode.connect(this.earlyReflections.input);
         this.earlyReflections.output.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
-        
+
         // Route FDN mixer to high shelf
         this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.wetGain);
+        this.highShelf.connect(this.outputLimiter);
+        this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
         
         // Update parameters for hall sound
@@ -456,9 +467,10 @@ export class QuadraVerbReverb {
         this.input.connect(this.preDelayNode);
         this.preDelayNode.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
-        
+
         this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.wetGain);
+        this.highShelf.connect(this.outputLimiter);
+        this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
         
         // Plate has brighter damping and higher feedback
@@ -491,9 +503,10 @@ export class QuadraVerbReverb {
         this.preDelayNode.connect(this.multiTapEcho.input);
         this.multiTapEcho.output.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
-        
+
         this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.wetGain);
+        this.highShelf.connect(this.outputLimiter);
+        this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
     }
     
@@ -516,7 +529,8 @@ export class QuadraVerbReverb {
         // RT60 formula: feedback = 10^(-3 * delay / RT60)
         const avgDelay = 0.05; // Average delay line time in seconds
         const feedback = Math.pow(10, (-3 * avgDelay) / decayTime);
-        return Math.max(0, Math.min(0.99, feedback));
+        // Keep a bit more headroom to avoid runaway gain when the send is hot
+        return Math.max(0, Math.min(0.9, feedback));
     }
     
     /**

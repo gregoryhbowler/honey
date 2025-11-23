@@ -14,6 +14,8 @@ import {
     setHarmonyMode
 } from './state-management.js';
 import { NOTE_NAMES, getAllowedNotes, getScaleName, SCALE_TYPES } from './harmony.js';
+import { createMollyParams } from './ui-molly-params.js';
+import { attachMollyListeners } from './ui-molly-listeners.js';
 
 let currentVoiceTab = 1;
 
@@ -31,8 +33,10 @@ export function createVoiceUI(voice) {
         <div class="voice-header">
             <div class="voice-title">voice ${voice.id}</div>
             <div class="voice-type-selector">
+                <div class="voice-type-selector">
                 <button class="type-btn ${voice.type === 'honey' ? 'active' : ''}" data-type="honey">honey</button>
                 <button class="type-btn ${voice.type === 'vinegar' ? 'active' : ''}" data-type="vinegar">vinegar</button>
+                <button class="type-btn ${voice.type === 'molly' ? 'active' : ''}" data-type="molly">molly</button>
             </div>
         </div>
         
@@ -689,8 +693,10 @@ function attachSynthParamListeners(voice, panel) {
     
     if (voice.type === 'honey') {
         attachHoneyListeners(voice, synthSection);
-    } else {
+    } else if (voice.type === 'vinegar') {
         attachVinegarListeners(voice, synthSection);
+    } else if (voice.type === 'molly') {
+        attachMollyListeners(voice, synthSection);
     }
 }
 
@@ -1272,14 +1278,18 @@ export function updateVoiceUI(voice) {
     if (!panel) return;
     
     const synthSection = panel.querySelector(`.synth-params-${voice.id}`);
+    let content = '<div class="section-title">synth parameters</div>';
+    
     if (voice.type === 'honey') {
-        synthSection.innerHTML = '<div class="section-title">synth parameters</div>' + createHoneyParams();
-    } else {
-        synthSection.innerHTML = '<div class="section-title">synth parameters</div>' + createVinegarParams();
+        content += createHoneyParams();
+    } else if (voice.type === 'vinegar') {
+        content += createVinegarParams();
+    } else if (voice.type === 'molly') {
+        content += createMollyParams();
     }
     
+    synthSection.innerHTML = content;
     attachSynthParamListeners(voice, panel);
-    updateProbabilitySliders();
 }
 
 /**

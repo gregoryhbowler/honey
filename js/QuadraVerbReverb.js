@@ -21,6 +21,9 @@
 export class QuadraVerbReverb {
     constructor(ctx) {
         this.ctx = ctx;
+
+        // If enabled, locks the effect to 100% wet for safe send/return use
+        this.sendMode = false;
         
         // === Parameters ===
         this.params = {
@@ -723,6 +726,10 @@ export class QuadraVerbReverb {
      * Set parameter
      */
     setParam(param, value) {
+        if (param === 'mix' && this.sendMode) {
+            value = 1.0;
+        }
+
         this.params[param] = value;
         const now = this.ctx.currentTime;
         
@@ -787,6 +794,14 @@ export class QuadraVerbReverb {
                 // Implemented via stereo matrix (future enhancement)
                 break;
         }
+    }
+
+    /**
+     * Lock the reverb for send usage (100% wet, dry muted)
+     */
+    enableSendMode() {
+        this.sendMode = true;
+        this.setParam('mix', 1.0);
     }
 
     updateDiffusion(value) {

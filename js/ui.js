@@ -1,6 +1,7 @@
 // UI Module
 // Handles all UI creation, updates, and event handling
 // Extended with comprehensive Honey synth (Atlantix-inspired) controls
+// and full Vinegar/Passersby parameter support
 
 import { 
     state, 
@@ -356,11 +357,18 @@ export function createHoneyParams() {
 }
 
 /**
- * Create Vinegar synth parameter UI
+ * Create Vinegar synth parameter UI with full Passersby parameters
  * @returns {string} HTML string
  */
 export function createVinegarParams() {
     return `
+        <div class="param-row">
+            <span class="param-label">Glide</span>
+            <div class="param-control">
+                <input type="range" class="glide" min="0" max="5" step="0.01" value="0">
+                <span class="param-value glide-value">0.00s</span>
+            </div>
+        </div>
         <div class="param-row">
             <span class="param-label">Wave Shape</span>
             <div class="param-control">
@@ -371,36 +379,161 @@ export function createVinegarParams() {
         <div class="param-row">
             <span class="param-label">Wave Folds</span>
             <div class="param-control">
-                <input type="range" class="wave-folds" min="0" max="3" step="0.1" value="0">
-                <span class="param-value wave-folds-value">0.0</span>
+                <input type="range" class="wave-folds" min="0" max="3" step="0.01" value="0">
+                <span class="param-value wave-folds-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">FM Low Ratio</span>
+            <div class="param-control">
+                <input type="range" class="fm-low-ratio" min="0.1" max="1" step="0.01" value="0.66">
+                <span class="param-value fm-low-ratio-value">0.66</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">FM Low Amount</span>
+            <div class="param-control">
+                <input type="range" class="fm-low-amount" min="0" max="1" step="0.01" value="0">
+                <span class="param-value fm-low-amount-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">FM High Ratio</span>
+            <div class="param-control">
+                <input type="range" class="fm-high-ratio" min="1" max="10" step="0.1" value="3.3">
+                <span class="param-value fm-high-ratio-value">3.3</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">FM High Amount</span>
+            <div class="param-control">
+                <input type="range" class="fm-high-amount" min="0" max="1" step="0.01" value="0">
+                <span class="param-value fm-high-amount-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">Env Type</span>
+            <div class="param-control">
+                <select class="env-type">
+                    <option value="0" selected>LPG</option>
+                    <option value="1">Sustain</option>
+                </select>
             </div>
         </div>
         <div class="param-row">
             <span class="param-label">Attack</span>
             <div class="param-control">
-                <input type="range" class="lpg-attack" min="0.003" max="2" step="0.001" value="0.04">
-                <span class="param-value lpg-attack-value">0.04</span>
+                <input type="range" class="lpg-attack" min="0.003" max="8" step="0.001" value="0.04">
+                <span class="param-value lpg-attack-value">0.040s</span>
             </div>
         </div>
         <div class="param-row">
             <span class="param-label">Peak</span>
             <div class="param-control">
-                <input type="range" class="lpg-peak" min="100" max="10000" step="10" value="2000">
-                <span class="param-value lpg-peak-value">2000</span>
+                <input type="range" class="lpg-peak" min="100" max="10000" step="10" value="10000">
+                <span class="param-value lpg-peak-value">10000 Hz</span>
             </div>
         </div>
         <div class="param-row">
             <span class="param-label">Decay</span>
             <div class="param-control">
-                <input type="range" class="lpg-decay" min="0.01" max="4" step="0.01" value="1">
-                <span class="param-value lpg-decay-value">1.00</span>
+                <input type="range" class="lpg-decay" min="0.01" max="8" step="0.01" value="1">
+                <span class="param-value lpg-decay-value">1.00s</span>
             </div>
         </div>
         <div class="param-row">
             <span class="param-label">Amp</span>
             <div class="param-control">
-                <input type="range" class="lpg-amp" min="0" max="1" step="0.01" value="1">
-                <span class="param-value lpg-amp-value">1.00</span>
+                <input type="range" class="lpg-amp" min="0" max="11" step="0.1" value="1">
+                <span class="param-value lpg-amp-value">1.0</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">Reverb Mix</span>
+            <div class="param-control">
+                <input type="range" class="reverb-mix" min="0" max="1" step="0.01" value="0">
+                <span class="param-value reverb-mix-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO Shape</span>
+            <div class="param-control">
+                <select class="lfo-shape">
+                    <option value="0" selected>Triangle</option>
+                    <option value="1">Ramp</option>
+                    <option value="2">Square</option>
+                    <option value="3">Random</option>
+                </select>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO Freq</span>
+            <div class="param-control">
+                <input type="range" class="lfo-freq" min="0.001" max="10" step="0.001" value="0.5">
+                <span class="param-value lfo-freq-value">0.50 Hz</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Freq</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-freq" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-freq-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Wave Shape</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-wave-shape" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-wave-shape-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Wave Folds</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-wave-folds" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-wave-folds-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → FM Low</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-fm-low" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-fm-low-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → FM High</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-fm-high" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-fm-high-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Attack</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-attack" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-attack-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Peak</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-peak" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-peak-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Decay</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-decay" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-decay-value">0.00</span>
+            </div>
+        </div>
+        <div class="param-row">
+            <span class="param-label">LFO → Reverb Mix</span>
+            <div class="param-control">
+                <input type="range" class="lfo-to-reverb-mix" min="0" max="1" step="0.01" value="0">
+                <span class="param-value lfo-to-reverb-mix-value">0.00</span>
             </div>
         </div>
         <div class="param-row">
@@ -562,7 +695,7 @@ function attachSynthParamListeners(voice, panel) {
 }
 
 /**
- * Attach Honey synth parameter listeners with all new Atlantix-inspired controls
+ * Attach Honey synth parameter listeners with all Atlantix-inspired controls
  */
 function attachHoneyListeners(voice, synthSection) {
     // VCO A Saw Level
@@ -857,9 +990,20 @@ function attachHoneyListeners(voice, synthSection) {
 }
 
 /**
- * Attach Vinegar synth parameter listeners
+ * Attach Vinegar synth parameter listeners with all Passersby controls
  */
 function attachVinegarListeners(voice, synthSection) {
+    // Glide
+    const glide = synthSection.querySelector('.glide');
+    const glideValue = synthSection.querySelector('.glide-value');
+    if (glide) {
+        glide.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            glideValue.textContent = val.toFixed(2) + 's';
+            voice.synth.setParam('glide', val);
+        });
+    }
+    
     // Wave shape
     const waveShape = synthSection.querySelector('.wave-shape');
     const waveShapeValue = synthSection.querySelector('.wave-shape-value');
@@ -877,8 +1021,60 @@ function attachVinegarListeners(voice, synthSection) {
     if (waveFolds) {
         waveFolds.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            waveFoldsValue.textContent = val.toFixed(1);
+            waveFoldsValue.textContent = val.toFixed(2);
             voice.synth.setParam('waveFolds', val);
+        });
+    }
+    
+    // FM Low Ratio
+    const fmLowRatio = synthSection.querySelector('.fm-low-ratio');
+    const fmLowRatioValue = synthSection.querySelector('.fm-low-ratio-value');
+    if (fmLowRatio) {
+        fmLowRatio.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            fmLowRatioValue.textContent = val.toFixed(2);
+            voice.synth.setParam('fmLowRatio', val);
+        });
+    }
+    
+    // FM Low Amount
+    const fmLowAmount = synthSection.querySelector('.fm-low-amount');
+    const fmLowAmountValue = synthSection.querySelector('.fm-low-amount-value');
+    if (fmLowAmount) {
+        fmLowAmount.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            fmLowAmountValue.textContent = val.toFixed(2);
+            voice.synth.setParam('fmLowAmount', val);
+        });
+    }
+    
+    // FM High Ratio
+    const fmHighRatio = synthSection.querySelector('.fm-high-ratio');
+    const fmHighRatioValue = synthSection.querySelector('.fm-high-ratio-value');
+    if (fmHighRatio) {
+        fmHighRatio.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            fmHighRatioValue.textContent = val.toFixed(1);
+            voice.synth.setParam('fmHighRatio', val);
+        });
+    }
+    
+    // FM High Amount
+    const fmHighAmount = synthSection.querySelector('.fm-high-amount');
+    const fmHighAmountValue = synthSection.querySelector('.fm-high-amount-value');
+    if (fmHighAmount) {
+        fmHighAmount.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            fmHighAmountValue.textContent = val.toFixed(2);
+            voice.synth.setParam('fmHighAmount', val);
+        });
+    }
+    
+    // Env Type
+    const envType = synthSection.querySelector('.env-type');
+    if (envType) {
+        envType.addEventListener('change', (e) => {
+            voice.synth.setParam('envType', parseInt(e.target.value));
         });
     }
     
@@ -888,7 +1084,7 @@ function attachVinegarListeners(voice, synthSection) {
     if (attack) {
         attack.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            attackValue.textContent = val.toFixed(3);
+            attackValue.textContent = val.toFixed(3) + 's';
             voice.synth.setParam('attack', val);
         });
     }
@@ -899,7 +1095,7 @@ function attachVinegarListeners(voice, synthSection) {
     if (peak) {
         peak.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
-            peakValue.textContent = val;
+            peakValue.textContent = val + ' Hz';
             voice.synth.setParam('peak', val);
         });
     }
@@ -910,7 +1106,7 @@ function attachVinegarListeners(voice, synthSection) {
     if (decay) {
         decay.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            decayValue.textContent = val.toFixed(2);
+            decayValue.textContent = val.toFixed(2) + 's';
             voice.synth.setParam('decay', val);
         });
     }
@@ -921,8 +1117,137 @@ function attachVinegarListeners(voice, synthSection) {
     if (amp) {
         amp.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            ampValue.textContent = val.toFixed(2);
+            ampValue.textContent = val.toFixed(1);
             voice.synth.setParam('amp', val);
+        });
+    }
+    
+    // Reverb Mix
+    const reverbMix = synthSection.querySelector('.reverb-mix');
+    const reverbMixValue = synthSection.querySelector('.reverb-mix-value');
+    if (reverbMix) {
+        reverbMix.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            reverbMixValue.textContent = val.toFixed(2);
+            voice.synth.setParam('reverbMix', val);
+        });
+    }
+    
+    // LFO Shape
+    const lfoShape = synthSection.querySelector('.lfo-shape');
+    if (lfoShape) {
+        lfoShape.addEventListener('change', (e) => {
+            voice.synth.setParam('lfoShape', parseInt(e.target.value));
+        });
+    }
+    
+    // LFO Freq
+    const lfoFreq = synthSection.querySelector('.lfo-freq');
+    const lfoFreqValue = synthSection.querySelector('.lfo-freq-value');
+    if (lfoFreq) {
+        lfoFreq.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoFreqValue.textContent = val.toFixed(2) + ' Hz';
+            voice.synth.setParam('lfoFreq', val);
+        });
+    }
+    
+    // LFO → Freq
+    const lfoToFreq = synthSection.querySelector('.lfo-to-freq');
+    const lfoToFreqValue = synthSection.querySelector('.lfo-to-freq-value');
+    if (lfoToFreq) {
+        lfoToFreq.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToFreqValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_freq_amount', val);
+        });
+    }
+    
+    // LFO → Wave Shape
+    const lfoToWaveShape = synthSection.querySelector('.lfo-to-wave-shape');
+    const lfoToWaveShapeValue = synthSection.querySelector('.lfo-to-wave-shape-value');
+    if (lfoToWaveShape) {
+        lfoToWaveShape.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToWaveShapeValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_wave_shape_amount', val);
+        });
+    }
+    
+    // LFO → Wave Folds
+    const lfoToWaveFolds = synthSection.querySelector('.lfo-to-wave-folds');
+    const lfoToWaveFoldsValue = synthSection.querySelector('.lfo-to-wave-folds-value');
+    if (lfoToWaveFolds) {
+        lfoToWaveFolds.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToWaveFoldsValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_wave_folds_amount', val);
+        });
+    }
+    
+    // LFO → FM Low
+    const lfoToFmLow = synthSection.querySelector('.lfo-to-fm-low');
+    const lfoToFmLowValue = synthSection.querySelector('.lfo-to-fm-low-value');
+    if (lfoToFmLow) {
+        lfoToFmLow.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToFmLowValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_fm_low_amount', val);
+        });
+    }
+    
+    // LFO → FM High
+    const lfoToFmHigh = synthSection.querySelector('.lfo-to-fm-high');
+    const lfoToFmHighValue = synthSection.querySelector('.lfo-to-fm-high-value');
+    if (lfoToFmHigh) {
+        lfoToFmHigh.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToFmHighValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_fm_high_amount', val);
+        });
+    }
+    
+    // LFO → Attack
+    const lfoToAttack = synthSection.querySelector('.lfo-to-attack');
+    const lfoToAttackValue = synthSection.querySelector('.lfo-to-attack-value');
+    if (lfoToAttack) {
+        lfoToAttack.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToAttackValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_attack_amount', val);
+        });
+    }
+    
+    // LFO → Peak
+    const lfoToPeak = synthSection.querySelector('.lfo-to-peak');
+    const lfoToPeakValue = synthSection.querySelector('.lfo-to-peak-value');
+    if (lfoToPeak) {
+        lfoToPeak.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToPeakValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_peak_amount', val);
+        });
+    }
+    
+    // LFO → Decay
+    const lfoToDecay = synthSection.querySelector('.lfo-to-decay');
+    const lfoToDecayValue = synthSection.querySelector('.lfo-to-decay-value');
+    if (lfoToDecay) {
+        lfoToDecay.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToDecayValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_decay_amount', val);
+        });
+    }
+    
+    // LFO → Reverb Mix
+    const lfoToReverbMix = synthSection.querySelector('.lfo-to-reverb-mix');
+    const lfoToReverbMixValue = synthSection.querySelector('.lfo-to-reverb-mix-value');
+    if (lfoToReverbMix) {
+        lfoToReverbMix.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lfoToReverbMixValue.textContent = val.toFixed(2);
+            voice.synth.setParam('lfo_to_reverb_mix_amount', val);
         });
     }
     

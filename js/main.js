@@ -5,8 +5,6 @@ import { initUI } from './ui.js';
 import { createMixerUI, attachMixerListeners } from './mixer-ui.js';
 import { createMimeophonUI, attachMimeophonListeners } from './mimeophon-ui.js';
 import { initMimeophon } from './state-management.js';
-import { createQuadraVerbUI, attachQuadraVerbListeners } from './quadraverb-ui.js';
-import { initQuadraVerb } from './state-management.js';
 import { state } from './state-management.js';
 
 /**
@@ -37,7 +35,7 @@ async function initMixer() {
     }
 
     const mimeophonInitialized = await initMimeophon();
-    
+
     if (mimeophonInitialized) {
         // Add Mimeophon UI after mixer
         const mimeophonUI = createMimeophonUI();
@@ -45,37 +43,10 @@ async function initMixer() {
             mimeophonUI,
             mixerPlaceholder.nextSibling
         );
-        
+
         // Attach Mimeophon listeners
         attachMimeophonListeners(state.mixer);
     }
-const quadraverbInitialized = await initQuadraVerb();
-    
-    if (quadraverbInitialized) {
-        // Add QuadraVerb UI after Mimeophon
-        const quadraverbUI = createQuadraVerbUI();
-        const mimeophonContainer = document.getElementById('mimeophonContainer');
-        
-        if (mimeophonContainer) {
-            // Insert after Mimeophon if it exists
-            mimeophonContainer.parentNode.insertBefore(
-                quadraverbUI,
-                mimeophonContainer.nextSibling
-            );
-        } else {
-            // Otherwise insert after mixer
-            mixerPlaceholder.parentNode.insertBefore(
-                quadraverbUI,
-                mixerPlaceholder.nextSibling
-            );
-        }
-        
-        // Attach QuadraVerb listeners
-        attachQuadraVerbListeners(state.mixer);
-    }
-    // ========================================
-    // END QUADRAVERB SECTION
-    // ========================================
 }
 
 // Start the application

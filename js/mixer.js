@@ -1,6 +1,6 @@
 // Mixer Module
 // DJ-style 3-band EQ, Culture Vulture-inspired saturation, panning, and level controls
-// NOW WITH: Mimeophon-inspired stereo delay send effect + QuadraVerb algorithmic reverb
+// NOW WITH: Mimeophon-inspired stereo delay send effect
 
 /**
  * Channel Strip - One per voice
@@ -397,7 +397,7 @@ export class ChannelStrip {
 
 /**
  * Master Bus - Sums all channels and provides master level control
- * NOW WITH: Mimeophon-inspired stereo delay + QuadraVerb algorithmic reverb send effects
+ * NOW WITH: Mimeophon-inspired stereo delay send effect
  */
 export class MasterBus {
     constructor(ctx) {
@@ -421,23 +421,6 @@ export class MasterBus {
         // Mimeophon will be connected later after worklet loads
         this.mimeophon = null;
         
-        // QuadraVerb send/return
-        this.quadraverbSend = ctx.createGain();
-        this.quadraverbSend.gain.value = 0;
-        this.quadraverbSendTrim = ctx.createGain();
-        this.quadraverbSendTrim.gain.value = 0.65; // -3.7 dB to prevent hot send drive
-        this.quadraverbReturn = ctx.createGain();
-        this.quadraverbReturn.gain.value = 1.0;
-        this.quadraverbReturnLimiter = ctx.createDynamicsCompressor();
-        this.quadraverbReturnLimiter.threshold.value = -9;
-        this.quadraverbReturnLimiter.knee.value = 12;
-        this.quadraverbReturnLimiter.ratio.value = 8;
-        this.quadraverbReturnLimiter.attack.value = 0.003;
-        this.quadraverbReturnLimiter.release.value = 0.18;
-        
-        // QuadraVerb will be connected after initialization
-        this.quadraverb = null;
-        
         // === Output ===
         this.output = ctx.createGain();
         this.output.gain.value = 1.0;
@@ -452,13 +435,6 @@ export class MasterBus {
         // mimeophonSend -> mimeophon -> mimeophonReturn -> output
         // (connected when mimeophon is initialized)
         this.mimeophonReturn.connect(this.output);
-        
-        // QuadraVerb send path
-        this.fader.connect(this.quadraverbSend);
-        this.quadraverbSend.connect(this.quadraverbSendTrim);
-        // quadraverbSendTrim -> quadraverb -> quadraverbReturnLimiter -> quadraverbReturn -> output
-        // (connected when quadraverb is initialized)
-        this.quadraverbReturn.connect(this.output);
         
         // Output to speakers
         this.output.connect(ctx.destination);
@@ -476,25 +452,6 @@ export class MasterBus {
         
         // Set mimeophon to 100% wet since it's a send effect
         mimeophonNode.setMix(1.0);
-    }
-    
-    /**
-     * Set QuadraVerb instance
-     */
-    setQuadraVerb(quadraverbNode) {
-        this.quadraverb = quadraverbNode;
-
-        // Connect send path
-        this.quadraverbSendTrim.connect(quadraverbNode.input);
-        quadraverbNode.connect(this.quadraverbReturnLimiter);
-        this.quadraverbReturnLimiter.connect(this.quadraverbReturn);
-
-        // Set quadraverb to 100% wet since it's a send effect
-        if (typeof quadraverbNode.enableSendMode === 'function') {
-            quadraverbNode.enableSendMode();
-        } else {
-            quadraverbNode.setParam('mix', 1.0);
-        }
     }
     
     /**
@@ -521,30 +478,11 @@ export class MasterBus {
         this.mimeophonReturn.gain.setTargetAtTime(value, now, 0.01);
     }
     
-    /**
-     * Set QuadraVerb send level
-     */
-    setQuadraVerbSend(value) {
-        const now = this.ctx.currentTime;
-        this.quadraverbSend.gain.setTargetAtTime(value, now, 0.01);
-
-        if (this.quadraverb) {
-            this.quadraverb.setParam('sendLevel', value);
-        }
-    }
-    
-    /**
-     * Set QuadraVerb return level
-     */
-    setQuadraVerbReturn(value) {
-        const now = this.ctx.currentTime;
-        this.quadraverbReturn.gain.setTargetAtTime(value, now, 0.01);
-    }
 }
 
 /**
  * Mixer - Manages all channel strips and master bus
- * NOW WITH: Mimeophon + QuadraVerb effect integration
+ * NOW WITH: Mimeophon effect integration
  */
 export class Mixer {
     constructor(ctx, numChannels = 3) {
@@ -567,7 +505,6 @@ export class Mixer {
         
         // Effects status
         this.mimeophonReady = false;
-        this.quadraverbReady = false;
     }
     
     /**
@@ -587,25 +524,6 @@ export class Mixer {
             return mimeophon;
         } catch (error) {
             console.error('Failed to initialize Mimeophon:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Initialize QuadraVerb effect
-     */
-    async initQuadraVerb() {
-        try {
-            const { QuadraVerbReverb } = await import('./QuadraVerbReverb.js');
-            const quadraverb = new QuadraVerbReverb(this.ctx);
-            
-            this.master.setQuadraVerb(quadraverb);
-            this.quadraverbReady = true;
-            
-            console.log('QuadraVerb initialized successfully');
-            return quadraverb;
-        } catch (error) {
-            console.error('Failed to initialize QuadraVerb:', error);
             throw error;
         }
     }
@@ -631,10 +549,4 @@ export class Mixer {
         return this.master.mimeophon;
     }
     
-    /**
-     * Get QuadraVerb effect
-     */
-    getQuadraVerb() {
-        return this.master.quadraverb;
-    }
 }

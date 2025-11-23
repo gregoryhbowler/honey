@@ -9,7 +9,6 @@ import { Sequencer } from './sequencer.js';
 import { getAllowedNotes } from './harmony.js';
 import { Mixer } from './mixer.js';
 import { MimeophonNode } from './MimeophonNode.js';
-import { QuadraVerbReverb } from './QuadraVerbReverb.js';
 
 // Create mixer instance
 const mixer = new Mixer(getAudioContext(), 3);
@@ -26,18 +25,6 @@ export async function initMimeophon() {
         return true;
     } catch (error) {
         console.error('Failed to initialize Mimeophon:', error);
-        return false;
-    }
-}
-
-export async function initQuadraVerb() {
-    try {
-        await state.mixer.initQuadraVerb();
-        console.log('✓ QuadraVerb initialized');
-        window.QuadraVerbReverb = QuadraVerbReverb;
-        return true;
-    } catch (error) {
-        console.error('Failed to initialize QuadraVerb:', error);
         return false;
     }
 }

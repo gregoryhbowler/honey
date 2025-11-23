@@ -4,6 +4,7 @@
 import { getAudioContext } from './utils.js';
 import { HoneySynth } from './honey-engine.js';
 import { VinegarSynth } from './vinegar-engine.js';
+import { MollySynth } from './molly-engine.js';
 import { Sequencer } from './sequencer.js';
 import { getAllowedNotes } from './harmony.js';
 
@@ -22,8 +23,8 @@ export class Voice {
     }
     
     /**
-     * Set the synth type (honey or vinegar)
-     * @param {string} type - 'honey' or 'vinegar'
+     * Set the synth type (honey, vinegar, or molly)
+     * @param {string} type - 'honey', 'vinegar', or 'molly'
      */
     setType(type) {
         this.type = type;
@@ -31,8 +32,10 @@ export class Voice {
         
         if (type === 'honey') {
             this.synth = new HoneySynth(getAudioContext());
-        } else {
+        } else if (type === 'vinegar') {
             this.synth = new VinegarSynth(getAudioContext());
+        } else if (type === 'molly') {
+            this.synth = new MollySynth(getAudioContext());
         }
         
         this.synth.output.connect(getAudioContext().destination);

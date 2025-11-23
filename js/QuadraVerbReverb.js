@@ -66,15 +66,7 @@ export class QuadraVerbReverb {
 
         // === Modulation LFOs ===
         // Must be created before the FDN so modulation targets exist when lines are wired
-        this.lfo1 = ctx.createOscillator();
-        this.lfo1.frequency.value = 0.2;
-        this.lfo1.type = 'sine';
-        this.lfo1.start();
-
-        this.lfo2 = ctx.createOscillator();
-        this.lfo2.frequency.value = 0.13;
-        this.lfo2.type = 'triangle';
-        this.lfo2.start();
+        this.ensureLFOs();
 
         // === FDN (Feedback Delay Network) ===
         this.fdnLines = this.createFDN();
@@ -189,6 +181,9 @@ export class QuadraVerbReverb {
         };
         
         // Allpass delay times in ms (prime-ish for dense diffusion)
+        // Ensure modulation sources exist before wiring modulation to the delay lines
+        this.ensureLFOs();
+
         const quality = this.params.quality;
         const apTimes = quality === 'high' 
             ? [7, 13, 19, 29]  // 4 allpasses in high quality
@@ -290,7 +285,7 @@ export class QuadraVerbReverb {
             line.delay.connect(line.output);
             line.output.connect(line.panner);
             line.panner.connect(mixer);
-            
+
             // Connect LFO modulation to delay time
             this.lfo1.connect(line.modGain);
             line.modGain.connect(line.delay.delayTime);
@@ -300,8 +295,27 @@ export class QuadraVerbReverb {
         
         // Crossfeed between lines for richness
         this.createFDNCrossfeed(lines);
-        
+
         return { lines, mixer };
+    }
+
+    /**
+     * Create (or recreate) LFOs used for modulation in the FDN
+     */
+    ensureLFOs() {
+        if (!this.lfo1) {
+            this.lfo1 = this.ctx.createOscillator();
+            this.lfo1.frequency.value = 0.2;
+            this.lfo1.type = 'sine';
+            this.lfo1.start();
+        }
+
+        if (!this.lfo2) {
+            this.lfo2 = this.ctx.createOscillator();
+            this.lfo2.frequency.value = 0.13;
+            this.lfo2.type = 'triangle';
+            this.lfo2.start();
+        }
     }
     
     /**

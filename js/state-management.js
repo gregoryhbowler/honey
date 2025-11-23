@@ -9,6 +9,7 @@ import { Sequencer } from './sequencer.js';
 import { getAllowedNotes } from './harmony.js';
 import { Mixer } from './mixer.js';
 import { MimeophonNode } from './MimeophonNode.js';
+import { QuadraVerbReverb } from './QuadraVerbReverb.js';
 
 // Create mixer instance
 const mixer = new Mixer(getAudioContext(), 3);

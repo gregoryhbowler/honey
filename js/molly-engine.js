@@ -1,16 +1,16 @@
 // Molly Synth Engine (Juno/Jupiter/CS-80 inspired polysynth)
 // Web Audio implementation of MollyThePoly with chorus and ring modulation
-// Polyphonic architecture with 8-voice management
+// Polyphonic architecture with voice management
 
 export class MollySynth {
-    constructor(ctx) {
+    constructor(ctx, maxVoices = 1) {
         this.ctx = ctx;
         this.output = ctx.createGain();
         this.output.gain.value = 0.3;
         
         // Voice pool for polyphony
         this.voices = [];
-        this.maxVoices = 8;
+        this.maxVoices = Math.max(1, Math.min(8, maxVoices)); // 1-8 voices
         
         // Global LFO (shared across all voices)
         this.lfo = {
@@ -124,7 +124,7 @@ export class MollySynth {
         this.chorus.lfo2.start();
         
         // Initialize voice pool
-        for (let i = 0; i < this.maxVoices; i++) {
+        for (let i = 0; i < 8; i++) { // Always create 8, but only use maxVoices
             this.voices.push(new InternalVoice(ctx, this));
         }
         
@@ -135,15 +135,30 @@ export class MollySynth {
      * Trigger a note (allocates a voice from the pool)
      */
     noteOn(freq, velocity = 1) {
-        const now = this.ctx.currentTime;
+        // Find a free voice within maxVoices limit or steal the oldest releasing one
+        let voice = null;
         
-        // Find a free voice or steal the oldest releasing one
-        let voice = this.voices.find(v => !v.active);
-        if (!voice) {
-            voice = this.voices.find(v => v.releasing);
-            if (!voice) {
-                voice = this.voices[0]; // Steal oldest
+        // First, try to find a free voice within the voice limit
+        for (let i = 0; i < this.maxVoices; i++) {
+            if (!this.voices[i].active) {
+                voice = this.voices[i];
+                break;
             }
+        }
+        
+        // If no free voice, steal the oldest releasing voice
+        if (!voice) {
+            for (let i = 0; i < this.maxVoices; i++) {
+                if (this.voices[i].releasing) {
+                    voice = this.voices[i];
+                    break;
+                }
+            }
+        }
+        
+        // If still no voice, steal the oldest active voice
+        if (!voice) {
+            voice = this.voices[0];
         }
         
         voice.triggerOn(freq, velocity, this.params, this.lastFreq);
@@ -154,11 +169,11 @@ export class MollySynth {
      * Release all active voices
      */
     noteOff() {
-        this.voices.forEach(v => {
-            if (v.active && !v.releasing) {
-                v.triggerOff();
+        for (let i = 0; i < this.maxVoices; i++) {
+            if (this.voices[i].active && !this.voices[i].releasing) {
+                this.voices[i].triggerOff();
             }
-        });
+        }
     }
     
     /**
@@ -173,6 +188,9 @@ export class MollySynth {
         
         // Handle global-level parameters
         switch(name) {
+            case 'polyphony':
+                this.maxVoices = Math.max(1, Math.min(8, value));
+                break;
             case 'lfoFreq':
                 this.lfo.osc.frequency.setTargetAtTime(value, now, 0.01);
                 break;
@@ -282,9 +300,9 @@ export class MollySynth {
         
         this.setParam('noiseLevel', this.mapExp(Math.random(), 0.0000001, 1));
         
-        this.setParam('lpFilterCutoff', this.mapExp(Math.pow(Math.random(), 2), 100, 20000));
+        this.setParam('lpFilterCutoff', this.mapExp(Math.pow(Math.random(), 2), 100, 12000));
         this.setParam('lpFilterResonance', Math.random() * 0.9);
-        this.setParam('lpFilterCutoffModEnv', (Math.random() - 0.3) * 1.3);
+        this.setParam('lpFilterCutoffModEnv', (Math.random() - 0.3) * 0.8); // Reduced range
         this.setParam('lpFilterCutoffModLfo', Math.random() * 0.2);
         
         this.setParam('env2Attack', this.mapExp(Math.random(), 0.002, 0.5));
@@ -321,9 +339,9 @@ export class MollySynth {
         
         this.setParam('noiseLevel', this.mapExp(Math.random(), 0.0000001, 1));
         
-        this.setParam('lpFilterCutoff', this.mapExp(Math.random(), 100, 20000));
+        this.setParam('lpFilterCutoff', this.mapExp(Math.random(), 100, 12000));
         this.setParam('lpFilterResonance', Math.random());
-        this.setParam('lpFilterCutoffModEnv', (Math.random() - 0.5) * 2);
+        this.setParam('lpFilterCutoffModEnv', (Math.random() - 0.5) * 1.2); // Reduced range
         this.setParam('lpFilterCutoffModLfo', Math.random());
         
         this.setParam('env1Attack', this.mapExp(Math.random(), 0.002, 5));
@@ -351,7 +369,7 @@ export class MollySynth {
         
         this.setParam('lpFilterCutoff', this.mapExp(Math.random(), 100, 6000));
         this.setParam('lpFilterResonance', Math.random() > 0.6 ? this.mapLin(Math.random(), 0.5, 1) : Math.random());
-        this.setParam('lpFilterCutoffModEnv', this.mapLin(Math.random(), -0.3, 1));
+        this.setParam('lpFilterCutoffModEnv', this.mapLin(Math.random(), -0.3, 0.8)); // Reduced range
         this.setParam('lpFilterCutoffModLfo', Math.random());
         
         this.setParam('env1Attack', this.mapExp(Math.random(), 0.002, 5));
@@ -457,6 +475,13 @@ class InternalVoice {
         return buffer;
     }
     
+    /**
+     * Safe clamp for filter frequencies - ensures values stay within valid range
+     */
+    clampFreq(freq) {
+        return Math.max(20, Math.min(20000, freq));
+    }
+    
     triggerOn(freq, velocity, params, lastFreq) {
         const now = this.ctx.currentTime;
         this.active = true;
@@ -487,11 +512,13 @@ class InternalVoice {
         const waveShapes = ['triangle', 'sawtooth', 'square'];
         this.mainOsc.type = waveShapes[params.oscWaveShape] || 'sawtooth';
         
-        // Set filter frequencies
-        this.hpFilter.frequency.setTargetAtTime(params.hpFilterCutoff, now, 0.001);
+        // Set filter frequencies with strict clamping
+        this.hpFilter.frequency.setTargetAtTime(this.clampFreq(params.hpFilterCutoff), now, 0.001);
         
-        // Clamp base frequency to valid range
-        const baseLpFreq = Math.min(20000, params.lpFilterCutoff * Math.pow(freq / 440, params.lpFilterTracking));
+        // Calculate base LP frequency with conservative clamping to leave room for envelope
+        let baseLpFreq = params.lpFilterCutoff * Math.pow(freq / 440, params.lpFilterTracking);
+        baseLpFreq = this.clampFreq(Math.min(12000, baseLpFreq)); // Cap at 12kHz
+        
         this.lpFilter1.frequency.setTargetAtTime(baseLpFreq, now, 0.001);
         this.lpFilter1.Q.setTargetAtTime(this.mapQ(params.lpFilterResonance), now, 0.001);
         
@@ -510,21 +537,32 @@ class InternalVoice {
         this.vca.gain.linearRampToValueAtTime(velocity * 0.8, now + attack);
         this.vca.gain.linearRampToValueAtTime(velocity * sustain * 0.8, now + attack + decay);
         
-        // Filter envelope modulation with proper clamping
+        // Filter envelope modulation with STRICT clamping
         const envAmount = params.lpFilterCutoffModEnv;
         if (Math.abs(envAmount) > 0.01) {
-            // Calculate target frequencies with clamping to valid range [20, 20000]
-            const envTarget = Math.min(20000, Math.max(20, baseLpFreq * (1 + envAmount * 10)));
-            const envSustain = Math.min(20000, Math.max(20, baseLpFreq * (1 + envAmount * 10 * sustain)));
+            // Scale envelope amount more conservatively based on base frequency
+            // Lower base frequencies can have more modulation depth
+            const maxModDepth = Math.min(4, 8000 / baseLpFreq);
+            const scaledEnvAmount = envAmount * maxModDepth;
+            
+            // Calculate target frequencies with very strict clamping
+            let envTarget = baseLpFreq * (1 + scaledEnvAmount);
+            let envSustain = baseLpFreq * (1 + scaledEnvAmount * sustain);
+            
+            // Ensure we never exceed 18kHz to leave margin for Web Audio API
+            envTarget = this.clampFreq(Math.min(18000, envTarget));
+            envSustain = this.clampFreq(Math.min(18000, envSustain));
             
             this.lpFilter1.frequency.cancelScheduledValues(now);
-            this.lpFilter1.frequency.setValueAtTime(Math.min(20000, Math.max(20, baseLpFreq)), now);
+            this.lpFilter1.frequency.setValueAtTime(baseLpFreq, now);
             this.lpFilter1.frequency.exponentialRampToValueAtTime(envTarget, now + attack);
             this.lpFilter1.frequency.exponentialRampToValueAtTime(envSustain, now + attack + decay);
         }
     }
     
     triggerOff() {
+        if (!this.active || this.releasing) return;
+        
         const now = this.ctx.currentTime;
         this.releasing = true;
         
@@ -533,6 +571,12 @@ class InternalVoice {
         this.vca.gain.cancelScheduledValues(now);
         this.vca.gain.setValueAtTime(this.vca.gain.value, now);
         this.vca.gain.linearRampToValueAtTime(0, now + release);
+        
+        // Also release filter
+        const currentFilterFreq = this.lpFilter1.frequency.value;
+        this.lpFilter1.frequency.cancelScheduledValues(now);
+        this.lpFilter1.frequency.setValueAtTime(this.clampFreq(currentFilterFreq), now);
+        this.lpFilter1.frequency.exponentialRampToValueAtTime(100, now + release);
         
         setTimeout(() => {
             this.active = false;

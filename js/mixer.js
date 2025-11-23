@@ -1,6 +1,6 @@
 // Mixer Module
 // DJ-style 3-band EQ, Culture Vulture-inspired saturation, panning, and level controls
-// Structured for future send effects integration
+// NOW WITH: Mimeophon-inspired stereo delay send effect
 
 /**
  * Channel Strip - One per voice
@@ -397,7 +397,7 @@ export class ChannelStrip {
 
 /**
  * Master Bus - Sums all channels and provides master level control
- * Future: Will have sends to delay and reverb
+ * NOW WITH: Mimeophon-inspired stereo delay send effect
  */
 export class MasterBus {
     constructor(ctx) {
@@ -411,18 +411,46 @@ export class MasterBus {
         this.fader = ctx.createGain();
         this.fader.gain.value = 0.85;
         
+        // === Send Effects ===
+        this.mimeophonSend = ctx.createGain();
+        this.mimeophonSend.gain.value = 0;
+        this.mimeophonReturn = ctx.createGain();
+        this.mimeophonReturn.gain.value = 1.0;
+        
+        // Mimeophon will be connected later after worklet loads
+        this.mimeophon = null;
+        
         // === Output ===
         this.output = ctx.createGain();
         this.output.gain.value = 1.0;
         
-        // === Future: Send Effects ===
-        // this.delaySend = ctx.createGain();
-        // this.reverbSend = ctx.createGain();
-        
         // === Routing ===
+        // Main path
         this.input.connect(this.fader);
         this.fader.connect(this.output);
+        
+        // Send path
+        this.fader.connect(this.mimeophonSend);
+        // mimeophonSend -> mimeophon -> mimeophonReturn -> output
+        // (connected when mimeophon is initialized)
+        this.mimeophonReturn.connect(this.output);
+        
+        // Output to speakers
         this.output.connect(ctx.destination);
+    }
+    
+    /**
+     * Set Mimeophon instance (called after worklet loads)
+     */
+    setMimeophon(mimeophonNode) {
+        this.mimeophon = mimeophonNode;
+        
+        // Connect send path
+        this.mimeophonSend.connect(mimeophonNode.input);
+        mimeophonNode.output.connect(this.mimeophonReturn);
+        
+        // Set mimeophon to 100% wet since it's a send effect
+        mimeophonNode.setMix(1.0);
     }
     
     /**
@@ -432,10 +460,27 @@ export class MasterBus {
         const now = this.ctx.currentTime;
         this.fader.gain.setTargetAtTime(value, now, 0.01);
     }
+    
+    /**
+     * Set Mimeophon send level
+     */
+    setMimeophonSend(value) {
+        const now = this.ctx.currentTime;
+        this.mimeophonSend.gain.setTargetAtTime(value, now, 0.01);
+    }
+    
+    /**
+     * Set Mimeophon return level
+     */
+    setMimeophonReturn(value) {
+        const now = this.ctx.currentTime;
+        this.mimeophonReturn.gain.setTargetAtTime(value, now, 0.01);
+    }
 }
 
 /**
  * Mixer - Manages all channel strips and master bus
+ * NOW WITH: Mimeophon effect integration
  */
 export class Mixer {
     constructor(ctx, numChannels = 3) {
@@ -455,6 +500,30 @@ export class Mixer {
         this.channels.forEach(channel => {
             channel.output.connect(this.master.input);
         });
+        
+        // Mimeophon (will be initialized asynchronously)
+        this.mimeophonReady = false;
+    }
+    
+    /**
+     * Initialize Mimeophon effect
+     * Must be called after user interaction to enable AudioWorklet
+     */
+    async initMimeophon() {
+        try {
+            const { MimeophonNode } = await import('./MimeophonNode.js');
+            const mimeophon = new MimeophonNode(this.ctx);
+            await mimeophon.init();
+            
+            this.master.setMimeophon(mimeophon);
+            this.mimeophonReady = true;
+            
+            console.log('Mimeophon initialized successfully');
+            return mimeophon;
+        } catch (error) {
+            console.error('Failed to initialize Mimeophon:', error);
+            throw error;
+        }
     }
     
     /**
@@ -469,5 +538,12 @@ export class Mixer {
      */
     getMaster() {
         return this.master;
+    }
+    
+    /**
+     * Get Mimeophon effect
+     */
+    getMimeophon() {
+        return this.master.mimeophon;
     }
 }

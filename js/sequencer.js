@@ -1,6 +1,6 @@
 // Sequencer Module (meloDICER-inspired)
 // Generative sequencing with probability-based note selection and rhythm variation
-// Now with harmony-aware note filtering
+// Now with harmony-aware note filtering and proper voice management
 
 import { mtof } from './utils.js';
 import { getAllowedNotes, NOTE_NAMES } from './harmony.js';
@@ -36,6 +36,7 @@ export class Sequencer {
         
         this.lastNoteTime = 0;
         this.scheduledNotes = [];
+        this.lastStepWasNote = false; // Track if previous step was a note
     }
     
     /**
@@ -206,6 +207,7 @@ export class Sequencer {
         // Skip if voice is muted
         if (voiceState.muted) {
             this.currentStep = (this.currentStep + 1) % this.steps;
+            this.lastStepWasNote = false;
             return;
         }
         
@@ -221,10 +223,19 @@ export class Sequencer {
             
             // Trigger note if not legato or at sequence start
             if (!step.legato || this.currentStep === 0) {
+                // CRITICAL FIX: Release previous notes before triggering new one
+                // This prevents voice buildup and droning
+                if (this.lastStepWasNote && !step.legato) {
+                    this.synth.noteOff();
+                }
+                
                 this.synth.noteOn(transposedFreq, 0.8);
+                this.lastStepWasNote = true;
             }
         } else if (step && step.type === 'rest') {
+            // On rest, always release any playing notes
             this.synth.noteOff();
+            this.lastStepWasNote = false;
         }
         
         this.currentStep = (this.currentStep + 1) % this.steps;

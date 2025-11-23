@@ -462,6 +462,10 @@ class InternalVoice {
         this.active = true;
         this.releasing = false;
         
+        // Ensure voice is fully reset before starting new note
+        this.vca.gain.cancelScheduledValues(now);
+        this.vca.gain.setValueAtTime(0, now);
+        
         // Set frequencies with glide
         const glide = params.glide;
         if (glide > 0.001) {
@@ -486,7 +490,8 @@ class InternalVoice {
         // Set filter frequencies
         this.hpFilter.frequency.setTargetAtTime(params.hpFilterCutoff, now, 0.001);
         
-        const baseLpFreq = params.lpFilterCutoff * Math.pow(freq / 440, params.lpFilterTracking);
+        // Clamp base frequency to valid range
+        const baseLpFreq = Math.min(20000, params.lpFilterCutoff * Math.pow(freq / 440, params.lpFilterTracking));
         this.lpFilter1.frequency.setTargetAtTime(baseLpFreq, now, 0.001);
         this.lpFilter1.Q.setTargetAtTime(this.mapQ(params.lpFilterResonance), now, 0.001);
         
@@ -502,21 +507,20 @@ class InternalVoice {
         const decay = Math.max(0.002, params.env2Decay);
         const sustain = params.env2Sustain;
         
-        this.vca.gain.cancelScheduledValues(now);
-        this.vca.gain.setValueAtTime(0, now);
         this.vca.gain.linearRampToValueAtTime(velocity * 0.8, now + attack);
         this.vca.gain.linearRampToValueAtTime(velocity * sustain * 0.8, now + attack + decay);
         
-        // Filter envelope modulation
+        // Filter envelope modulation with proper clamping
         const envAmount = params.lpFilterCutoffModEnv;
         if (Math.abs(envAmount) > 0.01) {
-            const envTarget = baseLpFreq * (1 + envAmount * 10);
-            const envSustain = baseLpFreq * (1 + envAmount * 10 * sustain);
+            // Calculate target frequencies with clamping to valid range [20, 20000]
+            const envTarget = Math.min(20000, Math.max(20, baseLpFreq * (1 + envAmount * 10)));
+            const envSustain = Math.min(20000, Math.max(20, baseLpFreq * (1 + envAmount * 10 * sustain)));
             
             this.lpFilter1.frequency.cancelScheduledValues(now);
-            this.lpFilter1.frequency.setValueAtTime(baseLpFreq, now);
-            this.lpFilter1.frequency.exponentialRampToValueAtTime(Math.max(20, envTarget), now + attack);
-            this.lpFilter1.frequency.exponentialRampToValueAtTime(Math.max(20, envSustain), now + attack + decay);
+            this.lpFilter1.frequency.setValueAtTime(Math.min(20000, Math.max(20, baseLpFreq)), now);
+            this.lpFilter1.frequency.exponentialRampToValueAtTime(envTarget, now + attack);
+            this.lpFilter1.frequency.exponentialRampToValueAtTime(envSustain, now + attack + decay);
         }
     }
     

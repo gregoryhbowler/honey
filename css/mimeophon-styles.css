@@ -1,0 +1,226 @@
+/* Mimeophon Effect Styles */
+.mimeophon-container {
+    max-width: 1400px;
+    margin: 30px auto;
+    background: linear-gradient(135deg, rgba(180, 140, 220, 0.5), rgba(140, 180, 220, 0.5));
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.mimeophon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mimeophon-title {
+    font-size: 1.4em;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+}
+
+.mimeophon-preset-selector {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mimeophon-preset-selector label {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.mimeophon-preset-selector select {
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-size: 0.85em;
+}
+
+.mimeophon-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.mimeophon-section {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.mimeophon-section-title {
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 15px;
+    text-align: center;
+    text-transform: lowercase;
+    letter-spacing: 0.5px;
+}
+
+.mimeophon-param {
+    margin-bottom: 14px;
+}
+
+.mimeophon-param:last-child {
+    margin-bottom: 0;
+}
+
+.mimeophon-param-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mimeophon-param-label {
+    font-size: 0.75em;
+    color: #666;
+    font-weight: 500;
+}
+
+.mimeophon-param-value {
+    font-size: 0.75em;
+    color: #999;
+    min-width: 60px;
+    text-align: right;
+}
+
+.mimeophon-param input[type="range"] {
+    width: 100%;
+}
+
+.mimeophon-param select {
+    width: 100%;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 0.8em;
+}
+
+.mimeophon-zone-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.mimeophon-zone-btn {
+    padding: 8px 4px;
+    font-size: 0.7em;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mimeophon-zone-btn.active {
+    background: linear-gradient(135deg, #8860d0, #5680d0);
+    color: white;
+    border-color: #6070d0;
+}
+
+.mimeophon-zone-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Zone colors */
+.mimeophon-zone-btn[data-zone="0"] {
+    border-left: 4px solid #90ee90;
+}
+
+.mimeophon-zone-btn[data-zone="1"] {
+    border-left: 4px solid #ffd700;
+}
+
+.mimeophon-zone-btn[data-zone="2"] {
+    border-left: 4px solid #ff8c00;
+}
+
+.mimeophon-zone-btn[data-zone="3"] {
+    border-left: 4px solid #4682b4;
+}
+
+.mimeophon-toggles {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.mimeophon-toggle-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.75em;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mimeophon-toggle-btn.active {
+    background: linear-gradient(135deg, #c060d0, #6080d0);
+    color: white;
+    border-color: #8070d0;
+}
+
+.mimeophon-toggle-btn:hover {
+    transform: translateY(-1px);
+}
+
+.mimeophon-send-controls {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background: rgba(100, 80, 120, 0.1);
+    border-radius: 16px;
+    align-items: center;
+}
+
+.mimeophon-send-param {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mimeophon-send-param label {
+    font-size: 0.8em;
+    color: #666;
+    font-weight: 500;
+    text-align: center;
+}
+
+.mimeophon-send-param input[type="range"] {
+    width: 100%;
+}
+
+.mimeophon-send-value {
+    text-align: center;
+    font-size: 0.9em;
+    color: #888;
+}
+
+@media (max-width: 768px) {
+    .mimeophon-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mimeophon-zone-selector {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .mimeophon-send-controls {
+        flex-direction: column;
+    }
+}

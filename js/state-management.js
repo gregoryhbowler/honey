@@ -29,6 +29,18 @@ export async function initMimeophon() {
     }
 }
 
+export async function initQuadraVerb() {
+    try {
+        await state.mixer.initQuadraVerb();
+        console.log('✓ QuadraVerb initialized');
+        window.QuadraVerbReverb = QuadraVerbReverb;
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize QuadraVerb:', error);
+        return false;
+    }
+}
+
 /**
  * Voice class - represents one of the three voices
  */

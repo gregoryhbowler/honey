@@ -123,8 +123,13 @@ export class QuadraVerbReverb {
         this.gateEnvGain = ctx.createGain();
         this.gateEnvGain.gain.value = 1.0;
         this.gateDetector = this.createGateDetector();
+        this.gateDetectorSilence = ctx.createGain();
+        this.gateDetectorSilence.gain.value = 0;
+
         this.input.connect(this.gateDetector);
-        this.gateDetector.connect(ctx.destination); // Silent tap to drive envelope follower
+        // Keep the detector processing without routing any audio to the output.
+        this.gateDetector.connect(this.gateDetectorSilence);
+        this.gateDetectorSilence.connect(ctx.destination);
         
         // === Initial Routing ===
         this.setupRouting();
@@ -451,6 +456,14 @@ export class QuadraVerbReverb {
             const rms = Math.sqrt(sum / data.length);
             if (rms > 0.015) {
                 this.triggerGateEnvelope();
+            }
+
+            // Explicitly zero the output buffer to avoid any chance of
+            // bleed-through while keeping the processor active.
+            const out = e.outputBuffer;
+            for (let ch = 0; ch < out.numberOfChannels; ch++) {
+                const outData = out.getChannelData(ch);
+                outData.fill(0);
             }
         };
         return processor;

@@ -61,15 +61,16 @@ export function createQuadraVerbUI() {
                 
                 <div class="quadraverb-param">
                     <div class="quadraverb-param-header">
-                        <span class="quadraverb-param-label">mix</span>
-                        <span class="quadraverb-param-value" id="quadraverbMixValue">30%</span>
+                        <span class="quadraverb-param-label">mix (locked wet)</span>
+                        <span class="quadraverb-param-value" id="quadraverbMixValue">100% (send)</span>
                     </div>
-                    <input type="range" 
-                           id="quadraverbMix" 
-                           min="0" 
-                           max="1" 
-                           step="0.01" 
-                           value="0.3">
+                    <input type="range"
+                           id="quadraverbMix"
+                           min="0"
+                           max="1"
+                           step="0.01"
+                           value="1"
+                           disabled>
                 </div>
                 
                 <div class="quadraverb-param">
@@ -206,7 +207,15 @@ export function createQuadraVerbUI() {
 export function attachQuadraVerbListeners(mixer) {
     const quadraverb = mixer.getQuadraVerb();
     if (!quadraverb) return;
-    
+
+    // Lock mix to 100% wet for send/return safety
+    const mixSlider = document.getElementById('quadraverbMix');
+    const mixValue = document.getElementById('quadraverbMixValue');
+    mixSlider.disabled = true;
+    mixSlider.value = 1;
+    mixSlider.title = 'Send effect: mix locked to 100% wet';
+    mixValue.textContent = '100% (send)';
+
     // Program buttons
     document.querySelectorAll('.program-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -230,10 +239,9 @@ export function attachQuadraVerbListeners(mixer) {
         console.log('Quality changed - this requires reinitializing the reverb');
     });
     
-    // Mix
-    const mixSlider = document.getElementById('quadraverbMix');
-    const mixValue = document.getElementById('quadraverbMixValue');
+    // Mix (locked, but keep handler defensive if future modes allow changes)
     mixSlider.addEventListener('input', (e) => {
+        if (mixSlider.disabled) return;
         const val = parseFloat(e.target.value);
         mixValue.textContent = Math.round(val * 100) + '%';
         quadraverb.setParam('mix', val);
@@ -353,11 +361,17 @@ export function attachQuadraVerbListeners(mixer) {
  */
 function updateQuadraVerbUI(quadraverb) {
     const params = quadraverb.getCurrentPreset();
-    
+
     // Update sliders and values
-    document.getElementById('quadraverbMix').value = params.mix;
-    document.getElementById('quadraverbMixValue').textContent = Math.round(params.mix * 100) + '%';
-    
+    const mixSlider = document.getElementById('quadraverbMix');
+    const mixValue = document.getElementById('quadraverbMixValue');
+    const sendLocked = quadraverb.sendMode;
+
+    mixSlider.value = sendLocked ? 1 : params.mix;
+    mixValue.textContent = sendLocked
+        ? '100% (send)'
+        : Math.round(params.mix * 100) + '%';
+
     document.getElementById('quadraverbPreDelay').value = params.preDelay;
     document.getElementById('quadraverbPreDelayValue').textContent = params.preDelay + ' ms';
     

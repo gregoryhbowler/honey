@@ -424,8 +424,16 @@ export class MasterBus {
         // QuadraVerb send/return
         this.quadraverbSend = ctx.createGain();
         this.quadraverbSend.gain.value = 0;
+        this.quadraverbSendTrim = ctx.createGain();
+        this.quadraverbSendTrim.gain.value = 0.65; // -3.7 dB to prevent hot send drive
         this.quadraverbReturn = ctx.createGain();
         this.quadraverbReturn.gain.value = 1.0;
+        this.quadraverbReturnLimiter = ctx.createDynamicsCompressor();
+        this.quadraverbReturnLimiter.threshold.value = -9;
+        this.quadraverbReturnLimiter.knee.value = 12;
+        this.quadraverbReturnLimiter.ratio.value = 8;
+        this.quadraverbReturnLimiter.attack.value = 0.003;
+        this.quadraverbReturnLimiter.release.value = 0.18;
         
         // QuadraVerb will be connected after initialization
         this.quadraverb = null;
@@ -447,7 +455,8 @@ export class MasterBus {
         
         // QuadraVerb send path
         this.fader.connect(this.quadraverbSend);
-        // quadraverbSend -> quadraverb -> quadraverbReturn -> output
+        this.quadraverbSend.connect(this.quadraverbSendTrim);
+        // quadraverbSendTrim -> quadraverb -> quadraverbReturnLimiter -> quadraverbReturn -> output
         // (connected when quadraverb is initialized)
         this.quadraverbReturn.connect(this.output);
         
@@ -474,13 +483,18 @@ export class MasterBus {
      */
     setQuadraVerb(quadraverbNode) {
         this.quadraverb = quadraverbNode;
-        
+
         // Connect send path
-        this.quadraverbSend.connect(quadraverbNode.input);
-        quadraverbNode.connect(this.quadraverbReturn);
-        
+        this.quadraverbSendTrim.connect(quadraverbNode.input);
+        quadraverbNode.connect(this.quadraverbReturnLimiter);
+        this.quadraverbReturnLimiter.connect(this.quadraverbReturn);
+
         // Set quadraverb to 100% wet since it's a send effect
-        quadraverbNode.setParam('mix', 1.0);
+        if (typeof quadraverbNode.enableSendMode === 'function') {
+            quadraverbNode.enableSendMode();
+        } else {
+            quadraverbNode.setParam('mix', 1.0);
+        }
     }
     
     /**

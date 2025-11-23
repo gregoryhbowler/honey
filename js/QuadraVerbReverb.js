@@ -237,6 +237,10 @@ export class QuadraVerbReverb {
      * Create FDN (Feedback Delay Network)
      */
     createFDN() {
+        // Ensure modulation sources exist before wiring them into the delay lines
+        // (constructor order could be altered by future refactors)
+        this.ensureLFOs();
+
         const quality = this.params.quality;
         const numLines = quality === 'high' ? 8 : 4;
         

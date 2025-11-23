@@ -54,6 +54,10 @@ export class QuadraVerbReverb {
         this.wetGain = ctx.createGain();
         this.dryGain.gain.value = 0.7;
         this.wetGain.gain.value = 0.3;
+
+        // Extra headroom on wet path to prevent runaway when used as a hot send
+        this.wetTrim = ctx.createGain();
+        this.wetTrim.gain.value = 0.72;
         
         // === Pre-delay ===
         this.preDelayNode = ctx.createDelay(0.12);
@@ -90,11 +94,11 @@ export class QuadraVerbReverb {
 
         // Gentle output limiter to prevent runaway feedback when used on a send
         this.outputLimiter = ctx.createDynamicsCompressor();
-        this.outputLimiter.threshold.value = -12; // Catch hot feedback buildups
-        this.outputLimiter.knee.value = 12;
-        this.outputLimiter.ratio.value = 12;
-        this.outputLimiter.attack.value = 0.003;
-        this.outputLimiter.release.value = 0.25;
+        this.outputLimiter.threshold.value = -18; // Catch hot feedback buildups
+        this.outputLimiter.knee.value = 10;
+        this.outputLimiter.ratio.value = 20;
+        this.outputLimiter.attack.value = 0.002;
+        this.outputLimiter.release.value = 0.15;
         
         // === Stereo Width ===
         this.stereoWidthMerger = ctx.createChannelMerger(2);
@@ -538,6 +542,7 @@ export class QuadraVerbReverb {
             this.highShelf.disconnect();
             this.lowShelf.disconnect();
             this.outputLimiter.disconnect();
+            this.wetTrim.disconnect();
             this.wetGain.disconnect();
         } catch(e) {
             // Some nodes may not be connected, that's ok
@@ -561,13 +566,15 @@ export class QuadraVerbReverb {
         this.gateEnvGain.connect(this.highShelf);
         this.highShelf.connect(this.lowShelf);
         this.lowShelf.connect(this.outputLimiter);
-        this.outputLimiter.connect(this.wetGain);
+        this.outputLimiter.connect(this.wetTrim);
+        this.wetTrim.connect(this.wetGain);
         this.wetGain.connect(this.output);
-        
+
         // Update parameters for hall sound
+        const hallFeedback = this.applyProgramFeedbackScaling(this.calculateFeedback(this.params.decay));
         this.fdnLines.lines.forEach(line => {
             line.damping.frequency.value = this.computeDampingFreq(this.params.decay);
-            line.feedbackGain.gain.value = this.calculateFeedback(this.params.decay);
+            line.feedbackGain.gain.value = hallFeedback;
             line.modGain.gain.value = 1.0;
         });
         this.highShelf.gain.value = -4.5;
@@ -591,13 +598,15 @@ export class QuadraVerbReverb {
         this.gateEnvGain.connect(this.highShelf);
         this.highShelf.connect(this.lowShelf);
         this.lowShelf.connect(this.outputLimiter);
-        this.outputLimiter.connect(this.wetGain);
+        this.outputLimiter.connect(this.wetTrim);
+        this.wetTrim.connect(this.wetGain);
         this.wetGain.connect(this.output);
 
         // Plate has brighter damping and higher feedback
+        const plateFeedback = this.applyProgramFeedbackScaling(this.calculateFeedback(this.params.decay) * 0.98);
         this.fdnLines.lines.forEach(line => {
             line.damping.frequency.value = this.computeDampingFreq(this.params.decay) * 1.15;
-            line.feedbackGain.gain.value = this.calculateFeedback(this.params.decay) * 1.05;
+            line.feedbackGain.gain.value = plateFeedback;
             line.modGain.gain.value = 1.05;
         });
         this.highShelf.gain.value = -5.5;
@@ -634,7 +643,8 @@ export class QuadraVerbReverb {
         this.gateEnvGain.connect(this.highShelf);
         this.highShelf.connect(this.lowShelf);
         this.lowShelf.connect(this.outputLimiter);
-        this.outputLimiter.connect(this.wetGain);
+        this.outputLimiter.connect(this.wetTrim);
+        this.wetTrim.connect(this.wetGain);
         this.wetGain.connect(this.output);
 
         this.highShelf.gain.value = -3.5;
@@ -653,7 +663,7 @@ export class QuadraVerbReverb {
         this.setupHallRouting();
 
         // Keep tank reasonably live, but gate output hard
-        const feedback = this.calculateFeedback(this.params.decay * 0.8);
+        const feedback = this.applyProgramFeedbackScaling(this.calculateFeedback(this.params.decay * 0.8));
         this.fdnLines.lines.forEach(line => {
             line.feedbackGain.gain.value = feedback;
         });
@@ -672,10 +682,27 @@ export class QuadraVerbReverb {
 
         // Keep headroom so the Hadamard matrix stays stable; energy preservation means
         // we can allow a bit more than before while staying < 1.0 overall.
-        const SAFE_MAX = 0.82;
-        const SAFETY_MARGIN = 0.9; // Additional cushion for extreme settings
+        const SAFE_MAX = 0.78;
+        const SAFETY_MARGIN = 0.85; // Additional cushion for extreme settings
 
         return Math.max(0, Math.min(SAFE_MAX, feedback * SAFETY_MARGIN));
+    }
+
+    /**
+     * Apply program-specific feedback trims and global safety clamp
+     */
+    applyProgramFeedbackScaling(feedback) {
+        let scaled = feedback;
+        const program = this.params.program;
+
+        if (program === 'plate' || program === 'rich') {
+            scaled *= 0.95;
+        } else if (program === 'chorusVerb' || program === 'echoVerb') {
+            scaled *= 0.97;
+        }
+
+        // Hard clamp to keep the tank stable on hot sends
+        return Math.min(0.78, scaled);
     }
 
     /**
@@ -710,7 +737,7 @@ export class QuadraVerbReverb {
                 break;
                 
             case 'decay':
-                const feedback = this.calculateFeedback(value);
+                const feedback = this.applyProgramFeedbackScaling(this.calculateFeedback(value));
                 this.fdnLines.lines.forEach(line => {
                     line.feedbackGain.gain.setTargetAtTime(feedback, now, 0.05);
                     line.damping.frequency.setTargetAtTime(this.computeDampingFreq(value), now, 0.05);

@@ -527,6 +527,10 @@ export class MasterBus {
     setQuadraVerbSend(value) {
         const now = this.ctx.currentTime;
         this.quadraverbSend.gain.setTargetAtTime(value, now, 0.01);
+
+        if (this.quadraverb) {
+            this.quadraverb.setParam('sendLevel', value);
+        }
     }
     
     /**

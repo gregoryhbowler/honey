@@ -61,7 +61,10 @@ export class QuadraVerbReverb {
         // Extra headroom on wet path to prevent runaway when used as a hot send
         this.wetTrim = ctx.createGain();
         this.wetTrim.gain.value = 0.72;
-        
+
+        // Track send level for adaptive safety clamping
+        this.sendLevel = 0;
+
         // === Pre-delay ===
         this.preDelayNode = ctx.createDelay(0.12);
         this.preDelayNode.delayTime.value = 0;
@@ -704,8 +707,12 @@ export class QuadraVerbReverb {
             scaled *= 0.97;
         }
 
-        // Hard clamp to keep the tank stable on hot sends
-        return Math.min(0.78, scaled);
+        // Hard clamp to keep the tank stable on hot sends.
+        // If the send knob is high, reduce the ceiling further so the FDN can't self-oscillate
+        // from excessive recirculation.
+        const sendHeadroom = 0.78 - (this.sendLevel * 0.18); // up to -2.5 dB extra cut at full send
+        const ceiling = Math.max(0.6, sendHeadroom);
+        return Math.min(ceiling, scaled);
     }
 
     /**
@@ -728,6 +735,11 @@ export class QuadraVerbReverb {
     setParam(param, value) {
         if (param === 'mix' && this.sendMode) {
             value = 1.0;
+        }
+
+        if (param === 'sendLevel') {
+            this.updateSendSafety(value);
+            return;
         }
 
         this.params[param] = value;
@@ -802,6 +814,25 @@ export class QuadraVerbReverb {
     enableSendMode() {
         this.sendMode = true;
         this.setParam('mix', 1.0);
+    }
+
+    /**
+     * Receive send level updates from the mixer and adapt the safety trims.
+     * This avoids feedback when users drive the send hard by lowering wet trim
+     * and tightening the feedback ceiling.
+     */
+    updateSendSafety(level) {
+        this.sendLevel = Math.max(0, Math.min(1, level));
+
+        const now = this.ctx.currentTime;
+        const safeTrim = 0.72 - (this.sendLevel * 0.22); // up to -6 dB additional pad
+        this.wetTrim.gain.setTargetAtTime(Math.max(0.45, safeTrim), now, 0.05);
+
+        // Re-apply decay feedback with the stricter ceiling
+        const feedback = this.applyProgramFeedbackScaling(this.calculateFeedback(this.params.decay));
+        this.fdnLines.lines.forEach(line => {
+            line.feedbackGain.gain.setTargetAtTime(feedback, now, 0.05);
+        });
     }
 
     updateDiffusion(value) {

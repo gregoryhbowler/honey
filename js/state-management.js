@@ -8,9 +8,26 @@ import { MollySynth } from './molly-engine.js';
 import { Sequencer } from './sequencer.js';
 import { getAllowedNotes } from './harmony.js';
 import { Mixer } from './mixer.js';
+import { MimeophonNode } from './MimeophonNode.js';
 
 // Create mixer instance
 const mixer = new Mixer(getAudioContext(), 3);
+
+// Add this initialization function:
+export async function initMimeophon() {
+    try {
+        await state.mixer.initMimeophon();
+        console.log('✓ Mimeophon initialized');
+        
+        // Store reference for easy access
+        window.MimeophonNode = MimeophonNode;
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize Mimeophon:', error);
+        return false;
+    }
+}
 
 /**
  * Voice class - represents one of the three voices

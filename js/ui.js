@@ -32,7 +32,6 @@ export function createVoiceUI(voice) {
     panel.innerHTML = `
         <div class="voice-header">
             <div class="voice-title">voice ${voice.id}</div>
-            <div class="voice-type-selector">
                 <div class="voice-type-selector">
                 <button class="type-btn ${voice.type === 'honey' ? 'active' : ''}" data-type="honey">honey</button>
                 <button class="type-btn ${voice.type === 'vinegar' ? 'active' : ''}" data-type="vinegar">vinegar</button>

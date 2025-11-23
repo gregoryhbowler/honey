@@ -63,20 +63,21 @@ export class QuadraVerbReverb {
         
         // === Diffusion Stage ===
         this.diffusionAllpasses = this.createDiffusionStage();
-        
-        // === FDN (Feedback Delay Network) ===
-        this.fdnLines = this.createFDN();
-        
+
         // === Modulation LFOs ===
+        // Must be created before the FDN so modulation targets exist when lines are wired
         this.lfo1 = ctx.createOscillator();
         this.lfo1.frequency.value = 0.2;
         this.lfo1.type = 'sine';
         this.lfo1.start();
-        
+
         this.lfo2 = ctx.createOscillator();
         this.lfo2.frequency.value = 0.13;
         this.lfo2.type = 'triangle';
         this.lfo2.start();
+
+        // === FDN (Feedback Delay Network) ===
+        this.fdnLines = this.createFDN();
         
         // === Character Filters ===
         // High-shelf for "vintage digital" rolloff

@@ -20,7 +20,7 @@ export class MimeophonNode {
         
         try {
             // Load the processor worklet
-            await this.context.audioWorklet.addModule('/mimeophon-processor.js');
+            await this.context.audioWorklet.addModule('./js/mimeophon-processor.js');
             
             // Create the worklet node
             this.node = new AudioWorkletNode(this.context, 'mimeophon-processor', {

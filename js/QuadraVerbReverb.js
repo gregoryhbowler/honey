@@ -27,7 +27,8 @@ export class QuadraVerbReverb {
             mix: 0.3,
             preDelay: 0,              // 0-120 ms
             decay: 2.5,               // 0.2-15 s
-            damping: 8000,            // 4-12 kHz
+            damping: 8000,            // 4-12 kHz (brightness tilt)
+            hfTilt: 0,               // -1..1 darker/brighter tilt
             diffusion: 0.7,           // 0-1
             modDepth: 0.3,            // 0-1
             modRate: 0.2,             // 0.1-1 Hz
@@ -35,6 +36,9 @@ export class QuadraVerbReverb {
             bitReduction: 0,          // 0-1
             noiseAmount: 0,           // 0-1
             stereoWidth: 1.0,         // 0-2
+            gateHold: 0.2,            // seconds gate stays open after trigger
+            gateRelease: 0.15,        // seconds for gated tail to close
+            gateLevel: 1.0,           // output level while gate is open
             quality: 'normal'         // 'normal', 'high'
         };
         
@@ -78,6 +82,12 @@ export class QuadraVerbReverb {
         this.highShelf.frequency.value = 8000;
         this.highShelf.gain.value = -3;
 
+        // Gentle low shelf/tilt to keep low end controlled
+        this.lowShelf = ctx.createBiquadFilter();
+        this.lowShelf.type = 'lowshelf';
+        this.lowShelf.frequency.value = 180;
+        this.lowShelf.gain.value = -1.5;
+
         // Gentle output limiter to prevent runaway feedback when used on a send
         this.outputLimiter = ctx.createDynamicsCompressor();
         this.outputLimiter.threshold.value = -12; // Catch hot feedback buildups
@@ -98,10 +108,21 @@ export class QuadraVerbReverb {
         this.noiseSource = null;
         this.noiseGain = ctx.createGain();
         this.noiseGain.gain.value = 0;
+
+        // === Gated envelope ===
+        this.gateEnvGain = ctx.createGain();
+        this.gateEnvGain.gain.value = 1.0;
+        this.gateDetector = this.createGateDetector();
+        this.input.connect(this.gateDetector);
+        this.gateDetector.connect(ctx.destination); // Silent tap to drive envelope follower
         
         // === Initial Routing ===
         this.setupRouting();
-        
+
+        // Prime modulation/diffusion with current defaults
+        this.updateDiffusion(this.params.diffusion);
+        this.updateModDepth(this.params.modDepth);
+
         // === Presets ===
         this.presets = this.createPresets();
     }
@@ -193,14 +214,18 @@ export class QuadraVerbReverb {
         this.ensureLFOs();
 
         const quality = this.params.quality;
-        const apTimes = quality === 'high' 
-            ? [7, 13, 19, 29]  // 4 allpasses in high quality
-            : [11, 23];         // 2 allpasses in normal quality
+        // Normal: 3-4 shorter allpasses; High: 5-6 longer, denser allpasses
+        const apTimes = quality === 'high'
+            ? [7, 13, 19, 27, 33, 41]  // ms, incommensurate-ish
+            : [9, 15, 23, 31];         // ms
         
         let prevNode = diffusion.input;
         
-        apTimes.forEach(time => {
-            const ap = this.createAllpass(time / 1000, 0.7);
+        apTimes.forEach((time, idx) => {
+            const coeff = quality === 'high' ? 0.72 : 0.64;
+            const ap = this.createAllpass(time / 1000, coeff);
+            // Keep a tap handle so we can optionally bypass some at low diffusion
+            ap.activeIndex = idx;
             prevNode.connect(ap.input);
             prevNode = ap.output;
             diffusion.allpasses.push(ap);
@@ -251,11 +276,15 @@ export class QuadraVerbReverb {
 
         const quality = this.params.quality;
         const numLines = quality === 'high' ? 8 : 4;
-        
-        // Prime-ish delay times in ms for nice diffusion
-        const delayTimes = [
-            37, 41, 43, 47, 53, 59, 61, 67
+
+        // Spread delay times wider (25–120 ms) and add tiny random dither to avoid combing
+        const baseDelayTimes = [
+            31, 47, 63, 79, 95, 109, 121, 137
         ].slice(0, numLines);
+        const delayTimes = baseDelayTimes.map(time => {
+            const jitter = (Math.random() * 6) - 3; // ±3 ms jitter
+            return (time + jitter);
+        });
         
         const lines = [];
         const mixer = this.ctx.createGain(); // Mix all FDN outputs
@@ -264,10 +293,13 @@ export class QuadraVerbReverb {
             const line = {
                 input: this.ctx.createGain(),
                 delay: this.ctx.createDelay(0.15),
-                feedback: this.ctx.createGain(),
+                feedbackSum: this.ctx.createGain(),
+                feedbackGain: this.ctx.createGain(),
                 damping: this.ctx.createBiquadFilter(),
                 output: this.ctx.createGain(),
                 modGain: this.ctx.createGain(),
+                modWeight1: this.ctx.createGain(),
+                modWeight2: this.ctx.createGain(),
                 panner: this.ctx.createStereoPanner()
             };
             
@@ -275,7 +307,7 @@ export class QuadraVerbReverb {
             line.delay.delayTime.value = delayTimes[i] / 1000;
             
             // Feedback coefficient (will be modulated by decay param)
-            line.feedback.gain.value = 0.7;
+            line.feedbackGain.gain.value = 0.7;
             
             // Damping filter (lowpass inside feedback loop)
             line.damping.type = 'lowpass';
@@ -283,30 +315,38 @@ export class QuadraVerbReverb {
             line.damping.Q.value = 0.5;
             
             // Modulation depth control
-            line.modGain.gain.value = 0.002; // Small modulation depth
+            line.modGain.gain.value = 1.0; // Final modulation depth scaler
+            line.modWeight1.gain.value = 0.0001;
+            line.modWeight2.gain.value = 0.00008;
+            line.modScale = 0.85 + Math.random() * 0.35;
+            line.modBlend = 0.35 + Math.random() * 0.35; // blend between lfo1 (dominant) and lfo2
             
             // Pan each line for stereo
             line.panner.pan.value = (i / numLines) * 2 - 1; // Spread across stereo field
             
-            // Routing: input → delay → damping → feedback → delay (loop)
+            // Routing: input → delay → damping → feedbackSum → feedbackGain → delay (loop)
             //                    delay → output
             line.input.connect(line.delay);
             line.delay.connect(line.damping);
-            line.damping.connect(line.feedback);
-            line.feedback.connect(line.delay);
+            line.damping.connect(line.feedbackSum);
+            line.feedbackSum.connect(line.feedbackGain);
+            line.feedbackGain.connect(line.delay);
             line.delay.connect(line.output);
             line.output.connect(line.panner);
             line.panner.connect(mixer);
 
-            // Connect LFO modulation to delay time
-            this.lfo1.connect(line.modGain);
+            // Decorrelated modulation: per-line blend of two LFOs
+            this.lfo1.connect(line.modWeight1);
+            this.lfo2.connect(line.modWeight2);
+            line.modWeight1.connect(line.modGain);
+            line.modWeight2.connect(line.modGain);
             line.modGain.connect(line.delay.delayTime);
             
             lines.push(line);
         }
         
-        // Crossfeed between lines for richness
-        this.createFDNCrossfeed(lines);
+        // Create proper unitary-ish mixing matrix between lines
+        this.createFDNMixingMatrix(lines);
 
         return { lines, mixer };
     }
@@ -331,21 +371,43 @@ export class QuadraVerbReverb {
     }
     
     /**
-     * Create crossfeed matrix between FDN lines
+     * Create feedback mixing matrix between FDN lines.
+     *
+     * We use a Hadamard-style matrix scaled by 1/sqrt(N) so it is energy-normalised.
+     * The per-line feedbackGain node then controls the overall loop gain (RT60) safely.
      */
-    createFDNCrossfeed(lines) {
+    createFDNMixingMatrix(lines) {
         const numLines = lines.length;
-        
-        for (let i = 0; i < numLines; i++) {
-            // Each line feeds into the next line (circular)
-            const nextLine = (i + 1) % numLines;
-            const crossGain = this.ctx.createGain();
-            // Keep crossfeed gentle so the feedback matrix stays stable when used on a send
-            crossGain.gain.value = 0.12;
-            
-            lines[i].output.connect(crossGain);
-            crossGain.connect(lines[nextLine].input);
-        }
+        const scale = 1 / Math.sqrt(numLines);
+        // 4x4 and 8x8 Hadamard variants
+        const hadamard4 = [
+            [1, 1, 1, 1],
+            [1, -1, 1, -1],
+            [1, 1, -1, -1],
+            [1, -1, -1, 1]
+        ];
+        const hadamard8 = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, -1, 1, -1, 1, -1, 1, -1],
+            [1, 1, -1, -1, 1, 1, -1, -1],
+            [1, -1, -1, 1, 1, -1, -1, 1],
+            [1, 1, 1, 1, -1, -1, -1, -1],
+            [1, -1, 1, -1, -1, 1, -1, 1],
+            [1, 1, -1, -1, -1, -1, 1, 1],
+            [1, -1, -1, 1, -1, 1, 1, -1]
+        ];
+
+        const matrix = numLines === 8 ? hadamard8 : hadamard4;
+
+        lines.forEach((fromLine, row) => {
+            lines.forEach((toLine, col) => {
+                const gain = this.ctx.createGain();
+                gain.gain.value = matrix[row][col] * scale;
+                // Feed damped output of each line into the feedback sum of every line
+                fromLine.damping.connect(gain);
+                gain.connect(toLine.feedbackSum);
+            });
+        });
     }
     
     /**
@@ -361,6 +423,46 @@ export class QuadraVerbReverb {
         }
         
         return buffer;
+    }
+
+    /**
+     * Create a simple gate detector for gated/reverse programs.
+     * Uses a ScriptProcessor to follow the input RMS and triggers an envelope on transients.
+     */
+    createGateDetector() {
+        const processor = this.ctx.createScriptProcessor(1024, 1, 1);
+        processor.onaudioprocess = (e) => {
+            const data = e.inputBuffer.getChannelData(0);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+                const v = data[i];
+                sum += v * v;
+            }
+            const rms = Math.sqrt(sum / data.length);
+            if (rms > 0.015) {
+                this.triggerGateEnvelope();
+            }
+        };
+        return processor;
+    }
+
+    /**
+     * Trigger the gated envelope: instant attack, configurable hold + release
+     */
+    triggerGateEnvelope() {
+        if (this.params.program !== 'gated' && this.params.program !== 'reverse') {
+            return;
+        }
+        const now = this.ctx.currentTime;
+        const hold = this.params.gateHold;
+        const release = this.params.gateRelease;
+        const level = this.params.gateLevel;
+
+        this.gateEnvGain.gain.cancelScheduledValues(now);
+        this.gateEnvGain.gain.setValueAtTime(level, now);
+        this.gateEnvGain.gain.setValueAtTime(level, now + hold);
+        this.gateEnvGain.gain.exponentialRampToValueAtTime(0.0001, now + hold + release);
+        this.gateEnvGain.gain.setValueAtTime(0.0001, now + hold + release);
     }
     
     /**
@@ -411,7 +513,14 @@ export class QuadraVerbReverb {
             case 'gated':
                 this.setupGatedRouting();
                 break;
+            case 'reverse':
+                this.setupGatedRouting();
+                break;
         }
+
+        // Refresh modulation/diffusion in case program swap adjusted behavior
+        this.updateDiffusion(this.params.diffusion);
+        this.updateModDepth(this.params.modDepth);
     }
     
     /**
@@ -425,7 +534,9 @@ export class QuadraVerbReverb {
             this.multiTapEcho.output.disconnect();
             this.diffusionAllpasses.output.disconnect();
             this.fdnLines.mixer.disconnect();
+            this.gateEnvGain.disconnect();
             this.highShelf.disconnect();
+            this.lowShelf.disconnect();
             this.outputLimiter.disconnect();
             this.wetGain.disconnect();
         } catch(e) {
@@ -439,23 +550,30 @@ export class QuadraVerbReverb {
     setupHallRouting() {
         this.input.connect(this.dryGain);
         this.dryGain.connect(this.output);
-        
+
         this.input.connect(this.preDelayNode);
         this.preDelayNode.connect(this.earlyReflections.input);
         this.earlyReflections.output.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
 
-        // Route FDN mixer to high shelf
-        this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.outputLimiter);
+        // Route FDN mixer to envelope → tone stack → limiter
+        this.fdnLines.mixer.connect(this.gateEnvGain);
+        this.gateEnvGain.connect(this.highShelf);
+        this.highShelf.connect(this.lowShelf);
+        this.lowShelf.connect(this.outputLimiter);
         this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
         
         // Update parameters for hall sound
         this.fdnLines.lines.forEach(line => {
-            line.damping.frequency.value = this.params.damping;
-            line.feedback.gain.value = this.calculateFeedback(this.params.decay);
+            line.damping.frequency.value = this.computeDampingFreq(this.params.decay);
+            line.feedbackGain.gain.value = this.calculateFeedback(this.params.decay);
+            line.modGain.gain.value = 1.0;
         });
+        this.highShelf.gain.value = -4.5;
+        this.highShelf.frequency.value = 7800;
+        this.lowShelf.gain.value = -1.5;
+        this.gateEnvGain.gain.value = 1.0;
     }
     
     /**
@@ -469,16 +587,23 @@ export class QuadraVerbReverb {
         this.preDelayNode.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
 
-        this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.outputLimiter);
+        this.fdnLines.mixer.connect(this.gateEnvGain);
+        this.gateEnvGain.connect(this.highShelf);
+        this.highShelf.connect(this.lowShelf);
+        this.lowShelf.connect(this.outputLimiter);
         this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
-        
+
         // Plate has brighter damping and higher feedback
         this.fdnLines.lines.forEach(line => {
-            line.damping.frequency.value = this.params.damping * 1.2;
-            line.feedback.gain.value = this.calculateFeedback(this.params.decay) * 1.1;
+            line.damping.frequency.value = this.computeDampingFreq(this.params.decay) * 1.15;
+            line.feedbackGain.gain.value = this.calculateFeedback(this.params.decay) * 1.05;
+            line.modGain.gain.value = 1.05;
         });
+        this.highShelf.gain.value = -5.5;
+        this.highShelf.frequency.value = 8200;
+        this.lowShelf.gain.value = -0.8;
+        this.gateEnvGain.gain.value = 1.0;
     }
     
     /**
@@ -486,10 +611,10 @@ export class QuadraVerbReverb {
      */
     setupChorusVerbRouting() {
         this.setupHallRouting();
-        
+
         // Increase modulation depth for chorus effect
         this.fdnLines.lines.forEach(line => {
-            line.modGain.gain.value = 0.005; // 2.5x normal modulation
+            line.modGain.gain.value = 1.35; // Slight lift; actual depth is set by updateModDepth
         });
     }
     
@@ -499,16 +624,26 @@ export class QuadraVerbReverb {
     setupEchoVerbRouting() {
         this.input.connect(this.dryGain);
         this.dryGain.connect(this.output);
-        
+
         this.input.connect(this.preDelayNode);
         this.preDelayNode.connect(this.multiTapEcho.input);
         this.multiTapEcho.output.connect(this.diffusionAllpasses.input);
         this.diffusionAllpasses.output.connect(this.fdnLines.lines[0].input);
 
-        this.fdnLines.mixer.connect(this.highShelf);
-        this.highShelf.connect(this.outputLimiter);
+        this.fdnLines.mixer.connect(this.gateEnvGain);
+        this.gateEnvGain.connect(this.highShelf);
+        this.highShelf.connect(this.lowShelf);
+        this.lowShelf.connect(this.outputLimiter);
         this.outputLimiter.connect(this.wetGain);
         this.wetGain.connect(this.output);
+
+        this.highShelf.gain.value = -3.5;
+        this.highShelf.frequency.value = 7600;
+        this.lowShelf.gain.value = -1.0;
+        this.gateEnvGain.gain.value = 1.0;
+        this.fdnLines.lines.forEach(line => {
+            line.modGain.gain.value = 1.0;
+        });
     }
     
     /**
@@ -516,11 +651,15 @@ export class QuadraVerbReverb {
      */
     setupGatedRouting() {
         this.setupHallRouting();
-        
-        // Very short decay for gated effect
+
+        // Keep tank reasonably live, but gate output hard
+        const feedback = this.calculateFeedback(this.params.decay * 0.8);
         this.fdnLines.lines.forEach(line => {
-            line.feedback.gain.value = 0.4; // Short decay
+            line.feedbackGain.gain.value = feedback;
         });
+        this.gateEnvGain.gain.value = 0.0001; // stays closed until triggered
+        this.highShelf.gain.value = -6;
+        this.lowShelf.gain.value = -2;
     }
     
     /**
@@ -528,15 +667,29 @@ export class QuadraVerbReverb {
      */
     calculateFeedback(decayTime) {
         // RT60 formula: feedback = 10^(-3 * delay / RT60)
-        const avgDelay = 0.05; // Average delay line time in seconds
+        const avgDelay = 0.07; // Slightly longer average delay after widening spread
         const feedback = Math.pow(10, (-3 * avgDelay) / decayTime);
 
-        // Keep headroom so the crossfeed matrix never exceeds unity gain even when the send is hot
-        // The 0.65 cap + safety multiplier keeps (self feedback + crossfeed) well under 1.0
-        const SAFE_MAX = 0.65;
+        // Keep headroom so the Hadamard matrix stays stable; energy preservation means
+        // we can allow a bit more than before while staying < 1.0 overall.
+        const SAFE_MAX = 0.82;
         const SAFETY_MARGIN = 0.9; // Additional cushion for extreme settings
 
         return Math.max(0, Math.min(SAFE_MAX, feedback * SAFETY_MARGIN));
+    }
+
+    /**
+     * Map decay + HF tilt to damping cutoff. Longer decays push the loop darker.
+     */
+    computeDampingFreq(decayTime) {
+        const brightness = this.params.damping;
+        const tilt = this.params.hfTilt;
+        const decayNorm = Math.min(decayTime, 10) / 10;
+        const minFreq = 4200;
+        const maxFreq = Math.min(12000, brightness * 1.05);
+        const base = maxFreq - (decayNorm * 5000);
+        const tilted = base + (tilt * 1500);
+        return Math.max(minFreq, Math.min(maxFreq, tilted));
     }
     
     /**
@@ -559,29 +712,29 @@ export class QuadraVerbReverb {
             case 'decay':
                 const feedback = this.calculateFeedback(value);
                 this.fdnLines.lines.forEach(line => {
-                    line.feedback.gain.setTargetAtTime(feedback, now, 0.05);
+                    line.feedbackGain.gain.setTargetAtTime(feedback, now, 0.05);
+                    line.damping.frequency.setTargetAtTime(this.computeDampingFreq(value), now, 0.05);
                 });
                 break;
-                
+
             case 'damping':
                 this.fdnLines.lines.forEach(line => {
-                    line.damping.frequency.setTargetAtTime(value, now, 0.01);
+                    line.damping.frequency.setTargetAtTime(this.computeDampingFreq(this.params.decay), now, 0.05);
+                });
+                break;
+
+            case 'hfTilt':
+                this.fdnLines.lines.forEach(line => {
+                    line.damping.frequency.setTargetAtTime(this.computeDampingFreq(this.params.decay), now, 0.05);
                 });
                 break;
                 
             case 'diffusion':
-                this.diffusionAllpasses.allpasses.forEach(ap => {
-                    const coeff = 0.5 + (value * 0.3);
-                    ap.feedbackGain.gain.setTargetAtTime(coeff, now, 0.01);
-                    ap.feedforwardGain.gain.setTargetAtTime(-coeff, now, 0.01);
-                });
+                this.updateDiffusion(value);
                 break;
                 
             case 'modDepth':
-                this.fdnLines.lines.forEach(line => {
-                    const baseDepth = this.params.program === 'chorusVerb' ? 0.005 : 0.002;
-                    line.modGain.gain.setTargetAtTime(baseDepth * value, now, 0.01);
-                });
+                this.updateModDepth(value);
                 break;
                 
             case 'modRate':
@@ -592,15 +745,49 @@ export class QuadraVerbReverb {
             case 'program':
                 this.setProgram(value);
                 break;
-                
+
             case 'noiseAmount':
                 this.noiseGain.gain.setTargetAtTime(value * 0.001, now, 0.01);
+                break;
+
+            case 'gateHold':
+            case 'gateRelease':
+            case 'gateLevel':
+                // Envelope parameters are read during triggerGateEnvelope
                 break;
                 
             case 'stereoWidth':
                 // Implemented via stereo matrix (future enhancement)
                 break;
         }
+    }
+
+    updateDiffusion(value) {
+        const now = this.ctx.currentTime;
+        const allpasses = this.diffusionAllpasses.allpasses;
+        const minActive = this.params.quality === 'high' ? 4 : 3;
+        const targetActive = Math.min(allpasses.length, minActive + Math.floor(value * (allpasses.length - minActive + 0.99)));
+        const baseCoeff = (this.params.quality === 'high' ? 0.6 : 0.55) + (value * 0.18);
+
+        allpasses.forEach((ap, idx) => {
+            const active = idx < targetActive;
+            const coeff = active ? baseCoeff : 0.05;
+            ap.feedbackGain.gain.setTargetAtTime(coeff, now, 0.01);
+            ap.feedforwardGain.gain.setTargetAtTime(-coeff, now, 0.01);
+        });
+    }
+
+    updateModDepth(value) {
+        const now = this.ctx.currentTime;
+        const baseDepth = this.params.program === 'chorusVerb' ? 0.00035 : 0.00018; // 0.18–0.35 ms
+        const scaled = baseDepth * (0.25 + value * 0.85); // keep subtle even at max
+
+        this.fdnLines.lines.forEach(line => {
+            const weight1 = 0.55 + line.modBlend * 0.35;
+            const weight2 = 0.35 + (1 - line.modBlend) * 0.25;
+            line.modWeight1.gain.setTargetAtTime(scaled * weight1 * line.modScale, now, 0.05);
+            line.modWeight2.gain.setTargetAtTime(scaled * weight2 * line.modScale * 0.75, now, 0.05);
+        });
     }
     
     /**
@@ -615,85 +802,121 @@ export class QuadraVerbReverb {
      */
     createPresets() {
         return {
-            'Large Hall': {
-                mix: 0.35,
-                preDelay: 30,
-                decay: 4.5,
-                damping: 7000,
-                diffusion: 0.8,
-                modDepth: 0.2,
-                modRate: 0.15,
-                program: 'hall'
-            },
-            'Warm Plate': {
-                mix: 0.4,
-                preDelay: 10,
-                decay: 2.5,
-                damping: 9000,
-                diffusion: 0.9,
-                modDepth: 0.15,
-                modRate: 0.25,
-                program: 'plate'
-            },
-            'Rich Chamber': {
-                mix: 0.3,
-                preDelay: 5,
-                decay: 1.8,
-                damping: 8500,
-                diffusion: 0.75,
-                modDepth: 0.25,
-                modRate: 0.2,
-                program: 'rich'
-            },
-            'Shimmer Verb': {
-                mix: 0.45,
-                preDelay: 20,
-                decay: 6.0,
-                damping: 10000,
-                diffusion: 0.85,
-                modDepth: 0.6,
-                modRate: 0.35,
-                program: 'chorusVerb'
-            },
-            'Echo Chamber': {
-                mix: 0.35,
-                preDelay: 0,
-                decay: 3.0,
-                damping: 6000,
-                diffusion: 0.6,
-                modDepth: 0.3,
-                modRate: 0.18,
-                program: 'echoVerb'
-            },
-            'Gated Verb': {
-                mix: 0.5,
-                preDelay: 0,
-                decay: 0.8,
-                damping: 7500,
-                diffusion: 0.7,
-                modDepth: 0.1,
-                modRate: 0.12,
-                program: 'gated'
-            },
             'Small Room': {
-                mix: 0.25,
+                mix: 0.22,
                 preDelay: 5,
-                decay: 0.6,
-                damping: 8000,
+                decay: 0.7,
+                damping: 8500,
+                diffusion: 0.55,
+                modDepth: 0.12,
+                modRate: 0.25,
+                program: 'hall',
+                hfTilt: 0.1
+            },
+            'Medium Room': {
+                mix: 0.28,
+                preDelay: 12,
+                decay: 1.2,
+                damping: 8200,
                 diffusion: 0.65,
-                modDepth: 0.2,
+                modDepth: 0.15,
                 modRate: 0.22,
-                program: 'hall'
+                program: 'hall',
+                hfTilt: 0
+            },
+            'Large Room': {
+                mix: 0.32,
+                preDelay: 18,
+                decay: 2.3,
+                damping: 7800,
+                diffusion: 0.72,
+                modDepth: 0.18,
+                modRate: 0.2,
+                program: 'hall',
+                hfTilt: -0.05
+            },
+            'Studio Plate': {
+                mix: 0.35,
+                preDelay: 15,
+                decay: 2.5,
+                damping: 9500,
+                diffusion: 0.82,
+                modDepth: 0.22,
+                modRate: 0.28,
+                program: 'plate',
+                hfTilt: 0.2
+            },
+            'Vocal Plate': {
+                mix: 0.38,
+                preDelay: 45,
+                decay: 2.8,
+                damping: 9000,
+                diffusion: 0.85,
+                modDepth: 0.18,
+                modRate: 0.3,
+                program: 'plate',
+                hfTilt: 0.05
+            },
+            'Chamber': {
+                mix: 0.3,
+                preDelay: 22,
+                decay: 3.2,
+                damping: 7200,
+                diffusion: 0.78,
+                modDepth: 0.16,
+                modRate: 0.18,
+                program: 'hall',
+                hfTilt: -0.05
+            },
+            'Concert Hall': {
+                mix: 0.36,
+                preDelay: 40,
+                decay: 5.5,
+                damping: 6500,
+                diffusion: 0.88,
+                modDepth: 0.14,
+                modRate: 0.12,
+                program: 'hall',
+                hfTilt: -0.1
             },
             'Cathedral': {
-                mix: 0.4,
-                preDelay: 50,
-                decay: 8.0,
-                damping: 6500,
-                diffusion: 0.9,
-                modDepth: 0.15,
+                mix: 0.42,
+                preDelay: 65,
+                decay: 7.5,
+                damping: 5800,
+                diffusion: 0.92,
+                modDepth: 0.12,
                 modRate: 0.1,
-                program: 'hall'
+                program: 'hall',
+                hfTilt: -0.15
+            },
+            'Gated Snare': {
+                mix: 0.48,
+                preDelay: 8,
+                decay: 1.8,
+                damping: 7600,
+                diffusion: 0.75,
+                modDepth: 0.1,
+                modRate: 0.16,
+                program: 'gated',
+                gateHold: 0.18,
+                gateRelease: 0.12,
+                gateLevel: 1.1,
+                hfTilt: -0.05
+            },
+            'Reverse Verb': {
+                mix: 0.45,
+                preDelay: 70,
+                decay: 3.5,
+                damping: 7000,
+                diffusion: 0.8,
+                modDepth: 0.14,
+                modRate: 0.2,
+                program: 'reverse',
+                gateHold: 0.35,
+                gateRelease: 0.08,
+                gateLevel: 1.0,
+                hfTilt: -0.1
             }
         };
     }
@@ -721,7 +944,7 @@ export class QuadraVerbReverb {
      * Randomize parameters (musically constrained)
      */
     randomize() {
-        const programs = ['hall', 'plate', 'rich', 'chorusVerb', 'echoVerb', 'gated'];
+        const programs = ['hall', 'plate', 'rich', 'chorusVerb', 'echoVerb', 'gated', 'reverse'];
         
         this.setParam('program', programs[Math.floor(Math.random() * programs.length)]);
         this.setParam('mix', 0.2 + Math.random() * 0.4);
@@ -731,5 +954,6 @@ export class QuadraVerbReverb {
         this.setParam('diffusion', 0.5 + Math.random() * 0.4);
         this.setParam('modDepth', Math.random() * 0.5);
         this.setParam('modRate', 0.1 + Math.random() * 0.4);
+        this.setParam('hfTilt', (Math.random() * 2 - 1) * 0.3);
     }
 }

@@ -1,9 +1,16 @@
 /**
- * Create Molly synth parameter UI with Juno/Jupiter/CS-80 controls
+ * Create Molly synth parameter UI with Juno/Jupiter/CS-80 controls + polyphony
  * @returns {string} HTML string
  */
 export function createMollyParams() {
     return `
+        <div class="param-row">
+            <span class="param-label">polyphony</span>
+            <div class="param-control">
+                <input type="range" class="molly-polyphony" min="1" max="8" step="1" value="1">
+                <span class="param-value molly-polyphony-value">1</span>
+            </div>
+        </div>
         <div class="param-row">
             <span class="param-label">osc wave shape</span>
             <div class="param-control">

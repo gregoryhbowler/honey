@@ -311,6 +311,7 @@ export class QuadraVerbReverb {
                 feedbackSum: this.ctx.createGain(),
                 feedbackGain: this.ctx.createGain(),
                 damping: this.ctx.createBiquadFilter(),
+                dcBlocker: this.ctx.createBiquadFilter(),
                 output: this.ctx.createGain(),
                 modGain: this.ctx.createGain(),
                 modWeight1: this.ctx.createGain(),
@@ -323,11 +324,16 @@ export class QuadraVerbReverb {
             
             // Feedback coefficient (will be modulated by decay param)
             line.feedbackGain.gain.value = 0.7;
-            
+
             // Damping filter (lowpass inside feedback loop)
             line.damping.type = 'lowpass';
             line.damping.frequency.value = 8000;
             line.damping.Q.value = 0.5;
+
+            // DC blocker to prevent offset buildup inside the loop
+            line.dcBlocker.type = 'highpass';
+            line.dcBlocker.frequency.value = 20;
+            line.dcBlocker.Q.value = 0.707;
             
             // Modulation depth control
             line.modGain.gain.value = 1.0; // Final modulation depth scaler
@@ -339,11 +345,11 @@ export class QuadraVerbReverb {
             // Pan each line for stereo
             line.panner.pan.value = (i / numLines) * 2 - 1; // Spread across stereo field
             
-            // Routing: input → delay → damping → feedbackSum → feedbackGain → delay (loop)
+            // Routing: input → delay → damping → DC blocker → (matrix send) → feedbackSum → feedbackGain → delay (loop)
             //                    delay → output
             line.input.connect(line.delay);
             line.delay.connect(line.damping);
-            line.damping.connect(line.feedbackSum);
+            line.damping.connect(line.dcBlocker);
             line.feedbackSum.connect(line.feedbackGain);
             line.feedbackGain.connect(line.delay);
             line.delay.connect(line.output);
@@ -393,7 +399,7 @@ export class QuadraVerbReverb {
      */
     createFDNMixingMatrix(lines) {
         const numLines = lines.length;
-        const scale = 1 / Math.sqrt(numLines);
+        const scale = (1 / Math.sqrt(numLines)) * 0.98;
         // 4x4 and 8x8 Hadamard variants
         const hadamard4 = [
             [1, 1, 1, 1],
@@ -418,8 +424,8 @@ export class QuadraVerbReverb {
             lines.forEach((toLine, col) => {
                 const gain = this.ctx.createGain();
                 gain.gain.value = matrix[row][col] * scale;
-                // Feed damped output of each line into the feedback sum of every line
-                fromLine.damping.connect(gain);
+                // Feed damped, DC-blocked output of each line into the feedback sum of every line
+                fromLine.dcBlocker.connect(gain);
                 gain.connect(toLine.feedbackSum);
             });
         });
@@ -550,22 +556,31 @@ export class QuadraVerbReverb {
      * Disconnect all internal routing
      */
     disconnectAllRouting() {
-        try {
-            this.input.disconnect();
-            this.preDelayNode.disconnect();
-            this.earlyReflections.output.disconnect();
-            this.multiTapEcho.output.disconnect();
-            this.diffusionAllpasses.output.disconnect();
-            this.fdnLines.mixer.disconnect();
-            this.gateEnvGain.disconnect();
-            this.highShelf.disconnect();
-            this.lowShelf.disconnect();
-            this.outputLimiter.disconnect();
-            this.wetTrim.disconnect();
-            this.wetGain.disconnect();
-        } catch(e) {
-            // Some nodes may not be connected, that's ok
-        }
+        const nodes = [
+            this.input,
+            this.preDelayNode,
+            this.earlyReflections?.output,
+            this.multiTapEcho?.output,
+            this.diffusionAllpasses?.output,
+            this.fdnLines?.mixer,
+            this.gateEnvGain,
+            this.highShelf,
+            this.lowShelf,
+            this.outputLimiter,
+            this.wetTrim,
+            this.wetGain
+        ];
+
+        nodes.forEach(node => {
+            if (!node || typeof node.disconnect !== 'function') {
+                return;
+            }
+            try {
+                node.disconnect();
+            } catch (e) {
+                // Some nodes may not be connected; continue cleanup
+            }
+        });
     }
     
     /**

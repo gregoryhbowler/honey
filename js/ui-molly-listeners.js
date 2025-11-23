@@ -2,6 +2,17 @@
  * Attach Molly synth parameter listeners
  */
 export function attachMollyListeners(voice, synthSection) {
+    // Polyphony
+    const polyphony = synthSection.querySelector('.molly-polyphony');
+    const polyphonyValue = synthSection.querySelector('.molly-polyphony-value');
+    if (polyphony) {
+        polyphony.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            polyphonyValue.textContent = val;
+            voice.synth.setParam('polyphony', val);
+        });
+    }
+    
     // Osc Wave Shape
     const oscWave = synthSection.querySelector('.molly-osc-wave');
     if (oscWave) {
